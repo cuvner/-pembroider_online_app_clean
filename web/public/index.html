@@ -203,8 +203,9 @@
 
         try {
           // IMPORTANT: server route is /api/generate
-          const res = await apiFetch("/api/generate", {
+          const res = await fetch("/api/jobs", {
             method: "POST",
+            headers: { "x-class-key": ACCESS_KEY },
             body: fd,
           });
 
