@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /opt
 COPY vendor/processing.zip /opt/processing.zip
+COPY processing-libraries /app/processing-libraries
+
 
 RUN set -eux; \
   rm -rf /opt/processing_unpack /opt/processing; \

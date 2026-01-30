@@ -15,7 +15,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Class access key (required for POST /api/jobs)
-const CLASS_KEY = process.env.CLASS_KEY || "changeme";
+const CLASS_KEY = process.env.CLASS_KEY || "textiles";
+
+const PROCESSING_SKETCHBOOK =
+  process.env.PROCESSING_SKETCHBOOK || "/app/processing-libraries";
 
 // Paths
 const JOBS_ROOT = process.env.JOBS_ROOT || path.resolve("./jobs");
@@ -72,8 +75,14 @@ function makeJobId() {
 }
 
 function buildCmd(jobDir) {
-  // Processing 4 REQUIRES "cli"
-  const args = ["cli", `--sketch=${RENDERER_SKETCH}`, "--run", "--", jobDir];
+  const args = [
+    "cli",
+    `--sketchbook=${PROCESSING_SKETCHBOOK}`,
+    `--sketch=${RENDERER_SKETCH}`,
+    "--run",
+    "--",
+    jobDir,
+  ];
 
   if (PROCESSING_WRAPPER) {
     return {
@@ -188,12 +197,7 @@ app.post(
 
 // Download outputs
 app.get("/api/jobs/:id/:file", async (req, res) => {
-  const filePath = path.join(
-    JOBS_ROOT,
-    req.params.id,
-    "out",
-    req.params.file
-  );
+  const filePath = path.join(JOBS_ROOT, req.params.id, "out", req.params.file);
   if (!fs.existsSync(filePath)) {
     return res.status(404).send("Not found");
   }
@@ -212,4 +216,3 @@ app.listen(PORT, () => {
   console.log(`Processing binary: ${PROCESSING_BIN}`);
   console.log(`Renderer sketch: ${RENDERER_SKETCH}`);
 });
-
