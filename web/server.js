@@ -5,8 +5,13 @@ import path from "path";
 import fs from "fs";
 import fsp from "fs/promises";
 import { spawn } from "child_process";
+import { fileURLToPath } from "url";
 
 const app = express();
+
+// Resolve paths relative to this server.js file (NOT process.cwd)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 /* -----------------------------
    Config (safe defaults)
@@ -17,17 +22,18 @@ const PORT = process.env.PORT || 3000;
 // Class access key (required for POST /api/jobs)
 const CLASS_KEY = process.env.CLASS_KEY || "textiles";
 
+// Sketchbook for Processing libraries
 const PROCESSING_SKETCHBOOK =
   process.env.PROCESSING_SKETCHBOOK || "/app/processing-libraries";
 
-// Paths
-const JOBS_ROOT = process.env.JOBS_ROOT || path.resolve("./jobs");
+// Paths (make them robust regardless of working directory)
+const JOBS_ROOT = process.env.JOBS_ROOT || path.resolve(__dirname, "../jobs");
 const RENDERER_SKETCH =
-  process.env.RENDERER_SKETCH || path.resolve("./renderer");
+  process.env.RENDERER_SKETCH || path.resolve(__dirname, "../renderer");
 
-// Processing
+// Processing (Dockerfile provides /usr/local/bin/processing-java)
 const PROCESSING_BIN =
-  process.env.PROCESSING_BIN || "/usr/local/bin/processing";
+  process.env.PROCESSING_BIN || "/usr/local/bin/processing-java";
 
 // Headless wrapper (xvfb-run in Docker)
 const PROCESSING_WRAPPER = process.env.PROCESSING_WRAPPER || null;
@@ -75,8 +81,8 @@ function makeJobId() {
 }
 
 function buildCmd(jobDir) {
+  // processing-java does NOT use "cli"
   const args = [
-    "cli",
     `--sketchbook=${PROCESSING_SKETCHBOOK}`,
     `--sketch=${RENDERER_SKETCH}`,
     "--run",
@@ -99,8 +105,18 @@ function buildCmd(jobDir) {
 
 // Health check
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true });
+  res.json({
+    ok: true,
+    processingBin: PROCESSING_BIN,
+    rendererSketch: RENDERER_SKETCH,
+    jobsRoot: JOBS_ROOT,
+    sketchbook: PROCESSING_SKETCHBOOK,
+    wrapper: PROCESSING_WRAPPER,
+  });
 });
+
+// (Optional) quiet favicon 404s
+app.get("/favicon.ico", (_req, res) => res.status(204).end());
 
 // Job creation
 app.post(
@@ -113,6 +129,10 @@ app.post(
         return res.status(400).json({ error: "No files uploaded" });
       }
 
+      if (!req.body.spec) {
+        return res.status(400).json({ error: "Missing spec" });
+      }
+
       const jobId = makeJobId();
       const jobDir = path.join(JOBS_ROOT, jobId);
       const layersDir = path.join(jobDir, "layers");
@@ -123,15 +143,12 @@ app.post(
 
       // Save uploaded PNGs
       for (const f of req.files) {
+        // keep original filename (fine for class use); if you want safer names we can sanitize
         const dest = path.join(layersDir, f.originalname);
         await fsp.writeFile(dest, f.buffer);
       }
 
       // Save spec.json
-      if (!req.body.spec) {
-        return res.status(400).json({ error: "Missing spec" });
-      }
-
       const specPath = path.join(jobDir, "spec.json");
       await fsp.writeFile(specPath, req.body.spec, "utf-8");
 
@@ -151,6 +168,7 @@ app.post(
       const child = spawn(cmd, args, {
         cwd: jobDir,
         stdio: ["ignore", "pipe", "pipe"],
+        env: process.env, // keep env vars (JAVA_TOOL_OPTIONS, LIBGL_ALWAYS_SOFTWARE, etc.)
       });
 
       let stdout = "";
@@ -204,8 +222,8 @@ app.get("/api/jobs/:id/:file", async (req, res) => {
   res.sendFile(filePath);
 });
 
-// Serve frontend
-app.use(express.static("public"));
+// Serve frontend (robust absolute path)
+app.use(express.static(path.resolve(__dirname, "public")));
 
 /* -----------------------------
    Start server
@@ -215,4 +233,6 @@ app.listen(PORT, () => {
   console.log(`PEmbroider server running on port ${PORT}`);
   console.log(`Processing binary: ${PROCESSING_BIN}`);
   console.log(`Renderer sketch: ${RENDERER_SKETCH}`);
+  console.log(`Jobs root: ${JOBS_ROOT}`);
+  console.log(`Sketchbook: ${PROCESSING_SKETCHBOOK}`);
 });
