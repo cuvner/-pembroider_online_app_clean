@@ -112,6 +112,20 @@ app.get("/api/health", (_req, res) => {
     jobsRoot: JOBS_ROOT,
     sketchbook: PROCESSING_SKETCHBOOK,
     wrapper: PROCESSING_WRAPPER,
+
+    // TEMP DIAGNOSTICS (remove later)
+    env_PROCESSING_BIN: process.env.PROCESSING_BIN || null,
+    env_keys: Object.keys(process.env).filter((k) =>
+      [
+        "PROCESSING_BIN",
+        "PROCESSING_WRAPPER",
+        "PROCESSING_WRAPPER_ARGS",
+        "PROCESSING_SKETCHBOOK",
+        "RENDERER_SKETCH",
+        "JOBS_ROOT",
+        "CLASS_KEY",
+      ].includes(k)
+    ),
   });
 });
 
