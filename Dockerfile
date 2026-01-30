@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 # ---- Processing portable (Linux x64) ----
-ARG PROCESSING_ZIP_URL="https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-linux-x64-portable.zip"
+ARG PROCESSING_ZIP_URL="https://github.com/processing/processing4/releases/download/processing-1310-4.4.10/processing-4.4.10-linux-x64-portable.zip"
 
 RUN set -eux; \
   rm -rf /opt/processing_unpack; \
