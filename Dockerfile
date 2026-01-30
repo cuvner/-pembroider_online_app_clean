@@ -5,9 +5,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   ca-certificates wget unzip \
   xvfb xauth \
   libxi6 libxrender1 libxtst6 libxext6 libxrandr2 libxfixes3 libxinerama1 \
-  libglib2.0-0 libgtk-3-0 \
+  libx11-xcb1 libxcomposite1 libxdamage1 libxkbcommon0 libxkbcommon-x11-0 \
+  libxss1 libxshmfence1 \
+  libglib2.0-0 libgtk-3-0 libatk1.0-0 libatk-bridge2.0-0 \
+  libpango-1.0-0 libpangocairo-1.0-0 libcups2 \
   libnss3 libasound2 \
-  libgbm1 libdrm2 \
+  libgbm1 libdrm2 libgl1 libgl1-mesa-dri libglx-mesa0 \
   fontconfig fonts-dejavu-core \
   && rm -rf /var/lib/apt/lists/*
 
@@ -48,7 +51,7 @@ ENV PROCESSING_WRAPPER_ARGS=-a
 
 # Reduce GPU/GL issues
 ENV LIBGL_ALWAYS_SOFTWARE=1
-ENV JAVA_TOOL_OPTIONS="-Djava.awt.headless=true -Djava2d.opengl=false"
+ENV JAVA_TOOL_OPTIONS="-Djava.awt.headless=false -Djava2d.opengl=false"
 
 WORKDIR /app
 
