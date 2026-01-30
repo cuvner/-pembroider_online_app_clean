@@ -1,158 +1,264 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>PEmbroider</title>
-  <style>
-    body { font-family: serif; margin: 24px; }
-    h1 { font-size: 56px; margin: 0 0 24px 0; }
-    .row { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
-    .muted { color: #555; }
-    button { padding: 6px 14px; font-size: 18px; }
-    input[type="file"] { font-size: 18px; }
-    .status { margin-top: 18px; font-size: 22px; white-space: pre-wrap; }
-    .keybox { display: flex; align-items: center; gap: 10px; }
-    .keybox input { font-size: 18px; padding: 6px 10px; width: 280px; }
-    .small { font-size: 14px; color: #666; margin-top: 6px; }
-  </style>
-</head>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PEmbroider</title>
+    <style>
+      body {
+        font-family: serif;
+        margin: 24px;
+      }
+      h1 {
+        font-size: 56px;
+        margin: 0 0 24px 0;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-bottom: 14px;
+      }
+      .muted {
+        color: #555;
+      }
+      button {
+        padding: 6px 14px;
+        font-size: 18px;
+      }
+      input[type="file"] {
+        font-size: 18px;
+      }
+      .status {
+        margin-top: 18px;
+        font-size: 22px;
+        white-space: pre-wrap;
+      }
+      .keybox {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .keybox input {
+        font-size: 18px;
+        padding: 6px 10px;
+        width: 320px;
+      }
+      .small {
+        font-size: 14px;
+        color: #666;
+        margin-top: 6px;
+        max-width: 900px;
+      }
+      .previewWrap {
+        margin-top: 18px;
+      }
+      .preview {
+        width: 900px;
+        max-width: 100%;
+        background: #cfcfcf;
+        display: block;
+        margin-top: 10px;
+        border: 0;
+      }
+      a {
+        font-size: 28px;
+      }
+    </style>
+  </head>
 
-<body>
-  <h1>PEmbroider</h1>
+  <body>
+    <h1>PEmbroider</h1>
 
-  <div class="row">
-    <input id="files" type="file" multiple accept="image/png" />
-    <span id="fileCount" class="muted">No files selected.</span>
-    <button id="generate">Generate</button>
-  </div>
+    <div class="row">
+      <input id="files" type="file" multiple accept="image/png" />
+      <span id="fileCount" class="muted">No files selected.</span>
+      <button id="generate">Generate</button>
+    </div>
 
-  <div class="row keybox">
-    <label for="accessKey">Class key:</label>
-    <input id="accessKey" type="password" placeholder="Enter class access key" />
-    <button id="saveKey">Save key</button>
-    <button id="clearKey">Change key</button>
-  </div>
-  <div class="small">
-    This app is protected. The class key is shared with students. It is stored in this browser only.
-  </div>
+    <div class="row keybox">
+      <label for="accessKey">Class key:</label>
+      <input
+        id="accessKey"
+        type="password"
+        placeholder="Enter class access key"
+      />
+      <button id="saveKey">Save key</button>
+      <button id="clearKey">Change key</button>
+    </div>
+    <div class="small">
+      This app is protected. The class key is shared with students. It is stored
+      in this browser only.
+    </div>
 
-  <div id="status" class="status"></div>
+    <div id="status" class="status"></div>
 
-<script>
-  // ----------------------------
-  // Key storage + API wrapper
-  // ----------------------------
-  let ACCESS_KEY = localStorage.getItem("pembroider_access_key") || "";
+    <div id="previewWrap" class="previewWrap" style="display: none">
+      <img id="previewImg" class="preview" alt="Preview" />
+      <div style="margin-top: 18px">
+        <a id="downloadLink" href="#" download>Download PES</a>
+      </div>
+    </div>
 
-  const accessKeyInput = document.getElementById("accessKey");
-  const saveKeyBtn = document.getElementById("saveKey");
-  const clearKeyBtn = document.getElementById("clearKey");
+    <script>
+      // ----------------------------
+      // Key storage + API wrapper
+      // ----------------------------
+      let ACCESS_KEY = localStorage.getItem("pembroider_class_key") || "";
 
-  accessKeyInput.value = ACCESS_KEY;
+      const accessKeyInput = document.getElementById("accessKey");
+      const saveKeyBtn = document.getElementById("saveKey");
+      const clearKeyBtn = document.getElementById("clearKey");
 
-  function setKey(k) {
-    ACCESS_KEY = (k || "").trim();
-    accessKeyInput.value = ACCESS_KEY;
-    if (ACCESS_KEY) localStorage.setItem("pembroider_access_key", ACCESS_KEY);
-    else localStorage.removeItem("pembroider_access_key");
-  }
+      accessKeyInput.value = ACCESS_KEY;
 
-  saveKeyBtn.onclick = () => {
-    setKey(accessKeyInput.value);
-    status("Key saved.");
-  };
-
-  clearKeyBtn.onclick = () => {
-    setKey("");
-    status("Key cleared. Enter the new key, then click Save key.");
-  };
-
-  function status(msg) {
-    document.getElementById("status").textContent = msg;
-  }
-
-  async function apiFetch(url, options = {}) {
-    const headers = new Headers(options.headers || {});
-    if (ACCESS_KEY) headers.set("x-access-key", ACCESS_KEY);
-
-    const res = await fetch(url, { ...options, headers });
-
-    if (res.status === 401) {
-      // Wrong or missing key
-      return { ok: false, status: 401, json: async () => ({ error: "Unauthorized" }) };
-    }
-    return res;
-  }
-
-  // ----------------------------
-  // UI wiring
-  // ----------------------------
-  const filesInput = document.getElementById("files");
-  const fileCount = document.getElementById("fileCount");
-  const generateBtn = document.getElementById("generate");
-
-  filesInput.addEventListener("change", () => {
-    const n = filesInput.files.length;
-    fileCount.textContent = n === 0 ? "No files selected." : `${n} file${n === 1 ? "" : "s"} selected.`;
-  });
-
-  // Minimal spec placeholder — your richer UI can build this object.
-  function buildSpecFromUI() {
-    return {
-      width: 800,
-      height: 800,
-      designScale: 1.0,
-      layers: [] // your full app populates this properly
-    };
-  }
-
-  generateBtn.onclick = async () => {
-    if (!ACCESS_KEY) {
-      status("ERROR: Please enter the class key, then click Save key.");
-      return;
-    }
-
-    const files = Array.from(filesInput.files || []);
-    if (files.length === 0) {
-      status("ERROR: Please choose one or more PNG files.");
-      return;
-    }
-
-    status("Uploading…");
-
-    const fd = new FormData();
-    for (const f of files) fd.append("files", f);
-
-    const spec = buildSpecFromUI();
-    fd.append("spec", JSON.stringify(spec));
-
-    try {
-      const res = await apiFetch("/api/jobs", { method: "POST", body: fd });
-      const data = await res.json?.() ?? {};
-
-      if (!res.ok) {
-        if (res.status === 401) {
-          status("ERROR: Unauthorized (wrong class key). Click “Change key”, enter the correct key, Save key, then try again.");
-        } else {
-          status("ERROR: " + (data.error || "Request failed"));
-        }
-        return;
+      function setKey(k) {
+        ACCESS_KEY = (k || "").trim();
+        accessKeyInput.value = ACCESS_KEY;
+        if (ACCESS_KEY)
+          localStorage.setItem("pembroider_class_key", ACCESS_KEY);
+        else localStorage.removeItem("pembroider_class_key");
       }
 
-      status("Done.\n\n" + JSON.stringify(data, null, 2));
-    } catch (err) {
-      status("ERROR: " + (err?.message || String(err)));
-    }
-  };
+      saveKeyBtn.onclick = () => {
+        setKey(accessKeyInput.value);
+        status("Key saved.");
+      };
 
-  // Initial display
-  if (!ACCESS_KEY) {
-    status("Enter the class key, click Save key, then upload PNGs and press Generate.");
-  } else {
-    status("Key loaded. Upload PNGs and press Generate.");
-  }
-</script>
-</body>
+      clearKeyBtn.onclick = () => {
+        setKey("");
+        status("Key cleared. Enter the new key, then click Save key.");
+        hideResults();
+      };
+
+      function status(msg) {
+        document.getElementById("status").textContent = msg;
+      }
+
+      function hideResults() {
+        document.getElementById("previewWrap").style.display = "none";
+        document.getElementById("previewImg").src = "";
+        document.getElementById("downloadLink").href = "#";
+      }
+
+      async function apiFetch(url, options = {}) {
+        const headers = new Headers(options.headers || {});
+        // IMPORTANT: server expects x-class-key (not x-access-key)
+        if (ACCESS_KEY) headers.set("x-class-key", ACCESS_KEY);
+
+        const res = await fetch(url, { ...options, headers });
+        return res;
+      }
+
+      // ----------------------------
+      // UI wiring
+      // ----------------------------
+      const filesInput = document.getElementById("files");
+      const fileCount = document.getElementById("fileCount");
+      const generateBtn = document.getElementById("generate");
+
+      filesInput.addEventListener("change", () => {
+        const n = filesInput.files.length;
+        fileCount.textContent =
+          n === 0
+            ? "No files selected."
+            : `${n} file${n === 1 ? "" : "s"} selected.`;
+        hideResults();
+      });
+
+      // Minimal spec placeholder
+      // If you don’t send layers, the server will build defaults from filenames.
+      function buildSpecFromUI() {
+        return {
+          width: 800,
+          height: 800,
+          designScale: 1.0,
+          output: { filename: "design", format: "pes" },
+          // optional: your UI can fill this later
+          // layers: [...]
+        };
+      }
+
+      generateBtn.onclick = async () => {
+        hideResults();
+
+        if (!ACCESS_KEY) {
+          status("ERROR: Please enter the class key, then click Save key.");
+          return;
+        }
+
+        const files = Array.from(filesInput.files || []);
+        if (files.length === 0) {
+          status("ERROR: Please choose one or more PNG files.");
+          return;
+        }
+
+        status("Uploading…");
+
+        const fd = new FormData();
+        for (const f of files) fd.append("files", f);
+
+        const spec = buildSpecFromUI();
+        fd.append("spec", JSON.stringify(spec));
+
+        try {
+          // IMPORTANT: server route is /api/generate
+          const res = await apiFetch("/api/generate", {
+            method: "POST",
+            body: fd,
+          });
+
+          let data = {};
+          try {
+            data = await res.json();
+          } catch {}
+
+          if (!res.ok) {
+            if (res.status === 401) {
+              status(
+                "ERROR: Unauthorized (wrong class key). Click “Change key”, enter the correct key, Save key, then try again."
+              );
+            } else {
+              // show server debug info if present
+              const msgParts = [];
+              msgParts.push("ERROR: " + (data.error || "Request failed"));
+              if (data.cmd) msgParts.push("\nCMD: " + data.cmd);
+              if (data.stdout) msgParts.push("\nSTDOUT:\n" + data.stdout);
+              if (data.stderr) msgParts.push("\nSTDERR:\n" + data.stderr);
+              status(msgParts.join("\n"));
+            }
+            return;
+          }
+
+          // Success: show preview + download link
+          status("Done.");
+
+          const previewUrl = data.previewUrl || "";
+          const pesUrl = data.pesUrl || "";
+
+          if (previewUrl) {
+            // cache-bust so you always get the latest file
+            document.getElementById("previewImg").src =
+              previewUrl + "?t=" + Date.now();
+          }
+          if (pesUrl) {
+            document.getElementById("downloadLink").href = pesUrl;
+          }
+
+          document.getElementById("previewWrap").style.display = "block";
+        } catch (err) {
+          status("ERROR: " + (err?.message || String(err)));
+        }
+      };
+
+      // Initial display
+      if (!ACCESS_KEY) {
+        status(
+          "Enter the class key, click Save key, then upload PNGs and press Generate."
+        );
+      } else {
+        status("Key loaded. Upload PNGs and press Generate.");
+      }
+    </script>
+  </body>
 </html>
-
