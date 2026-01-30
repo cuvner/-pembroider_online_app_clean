@@ -15,26 +15,25 @@ RUN set -eux; \
   mkdir -p /opt/processing_unpack; \
   unzip -q /opt/processing.zip -d /opt/processing_unpack; \
   rm /opt/processing.zip; \
-  echo "=== top-level after unzip ==="; \
-  ls -la /opt/processing_unpack; \
-  echo "=== searching for CLI binaries ==="; \
+  echo "=== searching for Processing launchers ==="; \
   CAND="$(find /opt/processing_unpack -type f \( -name processing -o -name Processing -o -name processing-java \) | head -n 1 || true)"; \
   echo "Found candidate: ${CAND:-<none>}"; \
   if [ -z "$CAND" ]; then \
-    echo "ERROR: No CLI binary found. Showing a sample of files:"; \
+    echo "ERROR: No Processing launcher found"; \
     find /opt/processing_unpack -maxdepth 4 -type f | head -n 200; \
     exit 1; \
   fi; \
   chmod +x "$CAND" || true; \
   ln -s "$(dirname "$CAND")" /opt/processing; \
   echo "=== /opt/processing contents ==="; \
-  ls -la /opt/processing
+  ls -la /opt/processing; \
+  printf '#!/bin/sh\nexec "%s" "$@"\n' "$CAND" > /usr/local/bin/processing; \
+  chmod +x /usr/local/bin/processing; \
+  /usr/local/bin/processing --help || true
 
+ENV PROCESSING_BIN=/usr/local/bin/processing
 ENV PROCESSING_WRAPPER=xvfb-run
 ENV PROCESSING_WRAPPER_ARGS=-a
-
-# Default — we may change this after we see which binary was found
-ENV PROCESSING_BIN=/opt/processing/processing
 
 WORKDIR /app
 COPY . .
