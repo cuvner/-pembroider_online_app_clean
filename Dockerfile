@@ -29,8 +29,17 @@ RUN set -eux; \
   echo "Found Processing launcher: ${PAPP:-<none>}"; \
   test -n "$PAPP"; \
   chmod +x "$PAPP" || true; \
-  ln -sf "$PAPP" /usr/local/bin/processing; \
-  echo "Symlinked /usr/local/bin/processing -> $PAPP"; \
+  PROCESSING_HOME="$(dirname "$(dirname "$PAPP")")"; \
+  echo "Processing home: $PROCESSING_HOME"; \
+  printf '%s\n' \
+    '#!/bin/sh' \
+    'APPDIR="'"$PROCESSING_HOME"'"' \
+    'export APPDIR' \
+    'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
+    'export JAVA_HOME="$APPDIR/lib/runtime"' \
+    'exec "$APPDIR/bin/Processing" "$@"' \
+    > /usr/local/bin/processing; \
+  chmod +x /usr/local/bin/processing; \
   /usr/local/bin/processing --help || true
 
 # ---- Environment: headless + safer rendering ----
