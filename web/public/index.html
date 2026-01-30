@@ -234,8 +234,9 @@
           // Success: show preview + download link
           status("Done.");
 
-          const previewUrl = data.previewUrl || "";
-          const pesUrl = data.pesUrl || "";
+          const previewUrl =
+            data.files?.preview || data.previewUrl || data.preview || "";
+          const pesUrl = data.files?.pes || data.pesUrl || data.pes || "";
 
           if (previewUrl) {
             // cache-bust so you always get the latest file

@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: pembroider
+    env: docker
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: CLASS_KEY
+        sync: false
+      - key: JOB_TTL_HOURS
+        value: "24"

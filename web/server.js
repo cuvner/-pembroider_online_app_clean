@@ -12,6 +12,7 @@ const app = express();
 // Resolve paths relative to this server.js file (NOT process.cwd)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const isMain = process.argv[1] === __filename;
 
 /* -----------------------------
    Config (safe defaults)
@@ -20,7 +21,11 @@ const __dirname = path.dirname(__filename);
 const PORT = process.env.PORT || 3000;
 
 // Class access key (required for POST /api/jobs)
-const CLASS_KEY = process.env.CLASS_KEY || "textiles";
+const CLASS_KEY = process.env.CLASS_KEY;
+if (isMain && !CLASS_KEY) {
+  console.error("Missing required env var: CLASS_KEY");
+  process.exit(1);
+}
 
 // Sketchbook for Processing libraries
 const PROCESSING_SKETCHBOOK =
@@ -45,6 +50,7 @@ const PROCESSING_WRAPPER_ARGS = (process.env.PROCESSING_WRAPPER_ARGS || "")
 const MAX_FILES = Number(process.env.MAX_FILES || 10);
 const MAX_FILE_MB = Number(process.env.MAX_FILE_MB || 10);
 const RENDER_TIMEOUT_MS = Number(process.env.RENDER_TIMEOUT_MS || 120_000);
+const JOB_TTL_HOURS = Number(process.env.JOB_TTL_HOURS || 0);
 
 // Ensure jobs root exists
 fs.mkdirSync(JOBS_ROOT, { recursive: true });
@@ -65,7 +71,37 @@ function requireClassKey(req, res, next) {
    Multer upload setup
 --------------------------------*/
 
+function sanitizeFilename(name) {
+  const base = path.basename(name || "");
+  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, "_").replace(/^_+/, "");
+  return cleaned || `file_${crypto.randomUUID()}.png`;
+}
+
+function uniqueName(dir, baseName) {
+  const ext = path.extname(baseName);
+  const stem = path.basename(baseName, ext);
+  let candidate = baseName;
+  let i = 1;
+  while (fs.existsSync(path.join(dir, candidate))) {
+    candidate = `${stem}-${i}${ext}`;
+    i += 1;
+  }
+  return candidate;
+}
+
+const storage = multer.diskStorage({
+  destination: (req, _file, cb) => {
+    cb(null, req.layersDir);
+  },
+  filename: (req, file, cb) => {
+    const safe = sanitizeFilename(file.originalname);
+    const unique = uniqueName(req.layersDir, safe);
+    cb(null, unique);
+  },
+});
+
 const upload = multer({
+  storage,
   limits: {
     files: MAX_FILES,
     fileSize: MAX_FILE_MB * 1024 * 1024,
@@ -99,6 +135,47 @@ function buildCmd(jobDir) {
   return { cmd: PROCESSING_BIN, args };
 }
 
+async function cleanupJobs() {
+  if (!JOB_TTL_HOURS || Number.isNaN(JOB_TTL_HOURS)) return;
+  const cutoffMs = Date.now() - JOB_TTL_HOURS * 60 * 60 * 1000;
+  const entries = await fsp.readdir(JOBS_ROOT, { withFileTypes: true });
+  await Promise.all(
+    entries.map(async (ent) => {
+      if (!ent.isDirectory()) return;
+      const dir = path.join(JOBS_ROOT, ent.name);
+      try {
+        const stat = await fsp.stat(dir);
+        if (stat.mtimeMs < cutoffMs) {
+          await fsp.rm(dir, { recursive: true, force: true });
+        }
+      } catch {}
+    })
+  );
+}
+
+async function ensureJobDirs(req, res, next) {
+  try {
+    const jobId = makeJobId();
+    const jobDir = path.join(JOBS_ROOT, jobId);
+    const layersDir = path.join(jobDir, "layers");
+    const outDir = path.join(jobDir, "out");
+
+    await fsp.mkdir(layersDir, { recursive: true });
+    await fsp.mkdir(outDir, { recursive: true });
+
+    req.jobId = jobId;
+    req.jobDir = jobDir;
+    req.layersDir = layersDir;
+    req.outDir = outDir;
+    next();
+  } catch (err) {
+    res.status(500).json({
+      error: "Server error",
+      message: err?.message || String(err),
+    });
+  }
+}
+
 /* -----------------------------
    Routes
 --------------------------------*/
@@ -112,20 +189,6 @@ app.get("/api/health", (_req, res) => {
     jobsRoot: JOBS_ROOT,
     sketchbook: PROCESSING_SKETCHBOOK,
     wrapper: PROCESSING_WRAPPER,
-
-    // TEMP DIAGNOSTICS (remove later)
-    env_PROCESSING_BIN: process.env.PROCESSING_BIN || null,
-    env_keys: Object.keys(process.env).filter((k) =>
-      [
-        "PROCESSING_BIN",
-        "PROCESSING_WRAPPER",
-        "PROCESSING_WRAPPER_ARGS",
-        "PROCESSING_SKETCHBOOK",
-        "RENDERER_SKETCH",
-        "JOBS_ROOT",
-        "CLASS_KEY",
-      ].includes(k)
-    ),
   });
 });
 
@@ -136,6 +199,7 @@ app.get("/favicon.ico", (_req, res) => res.status(204).end());
 app.post(
   "/api/jobs",
   requireClassKey,
+  ensureJobDirs,
   upload.array("files"),
   async (req, res) => {
     try {
@@ -147,34 +211,22 @@ app.post(
         return res.status(400).json({ error: "Missing spec" });
       }
 
-      const jobId = makeJobId();
-      const jobDir = path.join(JOBS_ROOT, jobId);
-      const layersDir = path.join(jobDir, "layers");
-      const outDir = path.join(jobDir, "out");
-
-      await fsp.mkdir(layersDir, { recursive: true });
-      await fsp.mkdir(outDir, { recursive: true });
-
-      // Save uploaded PNGs
-      for (const f of req.files) {
-        // keep original filename (fine for class use); if you want safer names we can sanitize
-        const dest = path.join(layersDir, f.originalname);
-        await fsp.writeFile(dest, f.buffer);
-      }
+      const { jobId, jobDir } = req;
 
       // Save spec.json
       const specPath = path.join(jobDir, "spec.json");
-      await fsp.writeFile(specPath, req.body.spec, "utf-8");
 
       // Validate spec.json BEFORE launching Processing
-      const specText = await fsp.readFile(specPath, "utf-8");
-      const first = specText.trim()[0];
-      if (first !== "{" && first !== "[") {
-        return res.status(500).json({
+      let spec;
+      try {
+        spec = JSON.parse(req.body.spec);
+      } catch (err) {
+        return res.status(400).json({
           error: "spec.json is not valid JSON",
-          preview: specText.slice(0, 200),
+          message: err?.message || String(err),
         });
       }
+      await fsp.writeFile(specPath, JSON.stringify(spec), "utf-8");
 
       // Build renderer command
       const { cmd, args } = buildCmd(jobDir);
@@ -195,11 +247,27 @@ app.post(
         child.kill("SIGKILL");
       }, RENDER_TIMEOUT_MS);
 
+      let responded = false;
+      const sendOnce = (status, payload) => {
+        if (responded) return;
+        responded = true;
+        res.status(status).json(payload);
+      };
+
+      child.on("error", (err) => {
+        clearTimeout(timeout);
+        sendOnce(500, {
+          error: "Renderer failed to start",
+          message: err?.message || String(err),
+          cmd: [cmd, ...args].join(" "),
+        });
+      });
+
       child.on("close", async (code) => {
         clearTimeout(timeout);
 
         if (code !== 0) {
-          return res.status(500).json({
+          return sendOnce(500, {
             error: "Renderer failed",
             exitCode: code,
             cmd: [cmd, ...args].join(" "),
@@ -209,13 +277,15 @@ app.post(
         }
 
         // Success
-        res.json({
+        sendOnce(200, {
           ok: true,
           jobId,
           files: {
             pes: `/api/jobs/${jobId}/design.pes`,
             preview: `/api/jobs/${jobId}/preview.png`,
           },
+          pesUrl: `/api/jobs/${jobId}/design.pes`,
+          previewUrl: `/api/jobs/${jobId}/preview.png`,
         });
       });
     } catch (err) {
@@ -243,10 +313,20 @@ app.use(express.static(path.resolve(__dirname, "public")));
    Start server
 --------------------------------*/
 
-app.listen(PORT, () => {
-  console.log(`PEmbroider server running on port ${PORT}`);
-  console.log(`Processing binary: ${PROCESSING_BIN}`);
-  console.log(`Renderer sketch: ${RENDERER_SKETCH}`);
-  console.log(`Jobs root: ${JOBS_ROOT}`);
-  console.log(`Sketchbook: ${PROCESSING_SKETCHBOOK}`);
-});
+if (isMain) {
+  app.listen(PORT, () => {
+    console.log(`PEmbroider server running on port ${PORT}`);
+    console.log(`Processing binary: ${PROCESSING_BIN}`);
+    console.log(`Renderer sketch: ${RENDERER_SKETCH}`);
+    console.log(`Jobs root: ${JOBS_ROOT}`);
+    console.log(`Sketchbook: ${PROCESSING_SKETCHBOOK}`);
+  });
+}
+
+// Optional periodic cleanup
+if (JOB_TTL_HOURS && !Number.isNaN(JOB_TTL_HOURS)) {
+  cleanupJobs();
+  setInterval(cleanupJobs, 60 * 60 * 1000).unref();
+}
+
+export { sanitizeFilename, uniqueName };

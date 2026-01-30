@@ -3,6 +3,9 @@
   "name": "pembroider-web",
   "version": "1.0.0",
   "type": "module",
+  "scripts": {
+    "test": "node --test"
+  },
   "dependencies": {
     "express": "^4",
     "multer": "^1",
