@@ -3,27 +3,22 @@ FROM node:20-bookworm
 RUN apt-get update && apt-get install -y \
   openjdk-17-jre \
   xvfb \
-  curl \
   unzip \
   ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
-# --- Processing zip comes from an environment variable ---
-# Set this in Render: PROCESSING_ZIP_URL=<direct-download-url>
-ARG PROCESSING_ZIP_URL
-ENV PROCESSING_ZIP_URL=${PROCESSING_ZIP_URL}
-
+# ---- Install Processing from ZIP already in the repo ----
 WORKDIR /opt
+COPY vendor/processing.zip /opt/processing.zip
+
 RUN set -eux; \
-  test -n "$PROCESSING_ZIP_URL"; \
-  curl -L --fail --retry 10 --retry-delay 2 --retry-all-errors \
-    -o /opt/processing.zip "$PROCESSING_ZIP_URL"; \
   rm -rf /opt/processing_unpack /opt/processing; \
   mkdir -p /opt/processing_unpack; \
   unzip -q /opt/processing.zip -d /opt/processing_unpack; \
   rm /opt/processing.zip; \
+  echo "=== locating Processing binary ==="; \
   P="$(find /opt/processing_unpack -type f -name processing | head -n 1)"; \
-  echo "Found processing binary: $P"; \
+  echo "Found: $P"; \
   test -n "$P"; \
   chmod +x "$P" || true; \
   ln -s "$(dirname "$P")" /opt/processing; \
