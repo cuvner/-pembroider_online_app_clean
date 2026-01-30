@@ -12,23 +12,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 # ---- Processing portable (Linux x64) ----
-ARG PROCESSING_ZIP_URL="https://github.com/processing/processing4/releases/download/processing-1310-4.4.10/processing-4.4.10-linux-x64-portable.zip"
+# Use vendored bundle to avoid remote fetch during build.
+COPY vendor/processing.zip /tmp/processing.zip
 
 RUN set -eux; \
   rm -rf /opt/processing_unpack; \
   mkdir -p /opt/processing_unpack; \
-  wget -O /tmp/processing.zip "$PROCESSING_ZIP_URL"; \
   unzip -q /tmp/processing.zip -d /opt/processing_unpack; \
   rm /tmp/processing.zip; \
   echo "=== locating Processing launcher ==="; \
-  # Find a file literally named 'processing' (not directories)
-  P="$(find /opt/processing_unpack -type f -name processing | head -n 1)"; \
-  echo "Found: ${P:-<none>}"; \
-  test -n "$P"; \
-  chmod +x "$P" || true; \
-  ln -sf "$P" /usr/local/bin/processing; \
-  echo "Symlinked /usr/local/bin/processing -> $P"; \
-  /usr/local/bin/processing --help || true
+  # Prefer processing-java from the portable distribution
+  PJAVA="$(find /opt/processing_unpack -type f -name processing-java | head -n 1)"; \
+  echo "Found processing-java: ${PJAVA:-<none>}"; \
+  test -n "$PJAVA"; \
+  chmod +x "$PJAVA" || true; \
+  ln -sf "$PJAVA" /usr/local/bin/processing-java; \
+  echo "Symlinked /usr/local/bin/processing-java -> $PJAVA"; \
+  /usr/local/bin/processing-java --help || true
 
 # ---- Environment: headless + safer rendering ----
 ENV NODE_ENV=production
@@ -40,7 +40,7 @@ ENV RENDERER_SKETCH=/app/renderer
 ENV PROCESSING_SKETCHBOOK=/app/processing-libraries
 
 # Use the portable Processing launcher
-ENV PROCESSING_BIN=/usr/local/bin/processing
+ENV PROCESSING_BIN=/usr/local/bin/processing-java
 
 # Use Xvfb wrapper
 ENV PROCESSING_WRAPPER=xvfb-run
