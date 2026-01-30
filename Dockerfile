@@ -21,14 +21,14 @@ RUN set -eux; \
   unzip -q /tmp/processing.zip -d /opt/processing_unpack; \
   rm /tmp/processing.zip; \
   echo "=== locating Processing launcher ==="; \
-  # Prefer processing-java from the portable distribution
-  PJAVA="$(find /opt/processing_unpack -type f -name processing-java | head -n 1)"; \
-  echo "Found processing-java: ${PJAVA:-<none>}"; \
-  test -n "$PJAVA"; \
-  chmod +x "$PJAVA" || true; \
-  ln -sf "$PJAVA" /usr/local/bin/processing-java; \
-  echo "Symlinked /usr/local/bin/processing-java -> $PJAVA"; \
-  /usr/local/bin/processing-java --help || true
+  # Processing 4 portable bundles ship a launcher at Processing/bin/Processing
+  PAPP="$(find /opt/processing_unpack -type f -path '*/bin/Processing' | head -n 1)"; \
+  echo "Found Processing launcher: ${PAPP:-<none>}"; \
+  test -n "$PAPP"; \
+  chmod +x "$PAPP" || true; \
+  ln -sf "$PAPP" /usr/local/bin/processing; \
+  echo "Symlinked /usr/local/bin/processing -> $PAPP"; \
+  /usr/local/bin/processing --help || true
 
 # ---- Environment: headless + safer rendering ----
 ENV NODE_ENV=production
@@ -40,7 +40,7 @@ ENV RENDERER_SKETCH=/app/renderer
 ENV PROCESSING_SKETCHBOOK=/app/processing-libraries
 
 # Use the portable Processing launcher
-ENV PROCESSING_BIN=/usr/local/bin/processing-java
+ENV PROCESSING_BIN=/usr/local/bin/processing
 
 # Use Xvfb wrapper
 ENV PROCESSING_WRAPPER=xvfb-run
