@@ -53,6 +53,7 @@ const MAX_FILES = Number(process.env.MAX_FILES || 10);
 const MAX_FILE_MB = Number(process.env.MAX_FILE_MB || 10);
 const RENDER_TIMEOUT_MS = Number(process.env.RENDER_TIMEOUT_MS || 120_000);
 const JOB_TTL_HOURS = Number(process.env.JOB_TTL_HOURS || 0);
+const LOG_RENDERER_OUTPUT = process.env.LOG_RENDERER_OUTPUT === "1";
 
 // Ensure jobs root exists
 fs.mkdirSync(JOBS_ROOT, { recursive: true });
@@ -232,6 +233,8 @@ app.post(
 
       // Build renderer command
       const { cmd, args } = buildCmd(jobDir);
+      console.log(`Renderer start: ${jobId}`);
+      console.log(`Renderer cmd: ${[cmd, ...args].join(" ")}`);
 
       const child = spawn(cmd, args, {
         cwd: jobDir,
@@ -242,10 +245,24 @@ app.post(
       let stdout = "";
       let stderr = "";
 
-      child.stdout.on("data", (d) => (stdout += d.toString()));
-      child.stderr.on("data", (d) => (stderr += d.toString()));
+      child.stdout.on("data", (d) => {
+        const text = d.toString();
+        stdout += text;
+        if (LOG_RENDERER_OUTPUT) {
+          console.log(`[renderer ${jobId} stdout] ${text}`.trimEnd());
+        }
+      });
+      child.stderr.on("data", (d) => {
+        const text = d.toString();
+        stderr += text;
+        if (LOG_RENDERER_OUTPUT) {
+          console.log(`[renderer ${jobId} stderr] ${text}`.trimEnd());
+        }
+      });
 
+      let timedOut = false;
       const timeout = setTimeout(() => {
+        timedOut = true;
         child.kill("SIGKILL");
       }, RENDER_TIMEOUT_MS);
 
@@ -270,7 +287,7 @@ app.post(
 
         if (code !== 0) {
           return sendOnce(500, {
-            error: "Renderer failed",
+            error: timedOut ? "Renderer timed out" : "Renderer failed",
             exitCode: code,
             cmd: [cmd, ...args].join(" "),
             stdout,
