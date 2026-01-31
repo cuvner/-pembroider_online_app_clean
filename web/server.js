@@ -124,7 +124,6 @@ function buildCmd(jobDir) {
   const args = [
     `--sketch=${RENDERER_SKETCH}`,
     "--run",
-    "--",
     jobDir,
   ];
 
