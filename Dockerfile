@@ -94,8 +94,9 @@ COPY renderer /app/renderer
 COPY processing-libraries /app/processing-libraries
 COPY web /app/web
 
-RUN mkdir -p /app/sketchbook \
-  && ln -sfn /app/processing-libraries/libraries /app/sketchbook/libraries
+RUN mkdir -p /app/sketchbook /app/.processing \
+  && ln -sfn /app/processing-libraries/libraries /app/sketchbook/libraries \
+  && printf '%s\n' "sketchbook.path=/app/processing-libraries" > /app/.processing/preferences.txt
 
 RUN mkdir -p /app/jobs
 
