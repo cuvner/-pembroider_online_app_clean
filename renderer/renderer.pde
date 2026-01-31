@@ -78,6 +78,31 @@ void setup() {
   if (spec.hasKey("designScale")) {
     designScale = constrain(spec.getFloat("designScale"), 0.1, 1.0);
   }
+  // Optional auto-downscale to avoid OOM in optimization
+  boolean autoDownscale = true;
+  if (spec.hasKey("autoDownscale")) {
+    autoDownscale = spec.getBoolean("autoDownscale");
+  }
+  if (autoDownscale) {
+    float maxPixels = 1000000.0;
+    int maxDim = 1200;
+    if (spec.hasKey("maxPixels")) {
+      maxPixels = max(100000.0, spec.getFloat("maxPixels"));
+    }
+    if (spec.hasKey("maxDimension")) {
+      maxDim = max(400, spec.getInt("maxDimension"));
+    }
+    float scaleByPixels = sqrt(maxPixels / (W * (float)H));
+    float scaleByDim = min(maxDim / (float)W, maxDim / (float)H);
+    float capScale = min(scaleByPixels, scaleByDim);
+    if (capScale < 1.0) {
+      float oldScale = designScale;
+      designScale = max(0.1, min(designScale, capScale));
+      if (designScale < oldScale) {
+        println("Auto-downscale: " + oldScale + " -> " + designScale);
+      }
+    }
+  }
 
   // 5) Output config
   String filenameBase = "design";
@@ -114,13 +139,34 @@ void setup() {
     renderLayer(E, L, designScale);
   }
 
-  // Optimize (can be slow on large designs)
+  // Optimize (can be slow and memory-hungry on large designs)
   boolean doOptimize = true;
   if (spec.hasKey("optimize")) {
     doOptimize = spec.getBoolean("optimize");
   }
   if (doOptimize) {
-    E.optimize();
+    int trials = 2;
+    int maxIter = 400;
+    if (spec.hasKey("optimizeLevel")) {
+      String level = spec.getString("optimizeLevel");
+      if (level != null) {
+        level = level.toLowerCase().trim();
+        if (level.equals("fast")) {
+          trials = 1;
+          maxIter = 200;
+        } else if (level.equals("thorough")) {
+          trials = 5;
+          maxIter = 999;
+        }
+      }
+    }
+    if (spec.hasKey("optimizeTrials")) {
+      trials = max(1, spec.getInt("optimizeTrials"));
+    }
+    if (spec.hasKey("optimizeMaxIter")) {
+      maxIter = max(50, spec.getInt("optimizeMaxIter"));
+    }
+    E.optimize(trials, maxIter);
   }
 
   // Preview image (draws to the Processing canvas even if hidden)

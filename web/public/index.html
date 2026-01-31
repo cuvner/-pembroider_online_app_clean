@@ -73,6 +73,26 @@
       <input id="optimize" type="checkbox" checked>
       Optimize stitch order (slower)
     </label>
+    <label class="small">
+      Optimize level:
+      <select id="optimizeLevel">
+        <option value="fast">Fast</option>
+        <option value="balanced" selected>Balanced</option>
+        <option value="thorough">Thorough</option>
+      </select>
+    </label>
+    <label class="small">
+      <input id="autoDownscale" type="checkbox" checked>
+      Auto downscale (avoid OOM)
+    </label>
+    <label class="small">
+      Max pixels:
+      <input id="maxPixels" type="number" min="100000" step="100000" value="1000000">
+    </label>
+    <label class="small">
+      Max dimension:
+      <input id="maxDim" type="number" min="400" step="100" value="1200">
+    </label>
   </div>
 
   <div class="small">
@@ -103,6 +123,10 @@ const thresholdEl = document.getElementById("threshold");
 const thresholdValEl = document.getElementById("thresholdVal");
 const thresholdEnabledEl = document.getElementById("thresholdEnabled");
 const optimizeEl = document.getElementById("optimize");
+const optimizeLevelEl = document.getElementById("optimizeLevel");
+const autoDownscaleEl = document.getElementById("autoDownscale");
+const maxPixelsEl = document.getElementById("maxPixels");
+const maxDimEl = document.getElementById("maxDim");
 
 thresholdEl.addEventListener("input", () => {
   thresholdValEl.textContent = thresholdEl.value;
@@ -243,6 +267,10 @@ document.getElementById("go").addEventListener("click", async () => {
   const threshold = parseInt(thresholdEl.value, 10);
   const thresholdEnabled = thresholdEnabledEl.checked;
   const optimize = optimizeEl.checked;
+  const optimizeLevel = optimizeLevelEl.value;
+  const autoDownscale = autoDownscaleEl.checked;
+  const maxPixels = parseInt(maxPixelsEl.value, 10);
+  const maxDim = parseInt(maxDimEl.value, 10);
 
   const spec = {
     width: size,
@@ -250,6 +278,10 @@ document.getElementById("go").addEventListener("click", async () => {
     designScale: designScale,
     output: { format: "pes", filename: "design" },
     optimize: optimize,
+    optimizeLevel: optimizeLevel,
+    autoDownscale: autoDownscale,
+    maxPixels: isFinite(maxPixels) ? maxPixels : 1000000,
+    maxDimension: isFinite(maxDim) ? maxDim : 1200,
     layers: rows.map((row) => {
       const { color, pattern, a1, a2 } = row._controls;
       return {
