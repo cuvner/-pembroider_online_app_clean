@@ -145,6 +145,31 @@ void setup() {
     doOptimize = spec.getBoolean("optimize");
   }
   if (doOptimize) {
+    int polyCount = E.polylines != null ? E.polylines.size() : 0;
+    int stitchCount = 0;
+    if (E.polylines != null) {
+      for (int i = 0; i < E.polylines.size(); i++) {
+        stitchCount += E.polylines.get(i).size();
+      }
+    }
+    int maxPolys = 2000;
+    int maxStitches = 150000;
+    if (spec.hasKey("optimizeMaxPolylines")) {
+      maxPolys = max(200, spec.getInt("optimizeMaxPolylines"));
+    }
+    if (spec.hasKey("optimizeMaxStitches")) {
+      maxStitches = max(10000, spec.getInt("optimizeMaxStitches"));
+    }
+    String fallback = spec.hasKey("optimizeFallback") ? spec.getString("optimizeFallback") : "fast";
+    boolean overLimit = polyCount > maxPolys || stitchCount > maxStitches;
+    if (overLimit) {
+      println("Optimize limit hit. polylines=" + polyCount + " stitches=" + stitchCount);
+      if (fallback != null && fallback.toLowerCase().trim().equals("skip")) {
+        doOptimize = false;
+      }
+    }
+  }
+  if (doOptimize) {
     int trials = 2;
     int maxIter = 400;
     if (spec.hasKey("optimizeLevel")) {
@@ -158,6 +183,13 @@ void setup() {
           trials = 5;
           maxIter = 999;
         }
+      }
+    }
+    if (spec.hasKey("optimizeFallback")) {
+      String fallback = spec.getString("optimizeFallback");
+      if (fallback != null && fallback.toLowerCase().trim().equals("fast")) {
+        trials = min(trials, 1);
+        maxIter = min(maxIter, 200);
       }
     }
     if (spec.hasKey("optimizeTrials")) {

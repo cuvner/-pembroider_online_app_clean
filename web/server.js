@@ -54,9 +54,43 @@ const MAX_FILE_MB = Number(process.env.MAX_FILE_MB || 10);
 const RENDER_TIMEOUT_MS = Number(process.env.RENDER_TIMEOUT_MS || 120_000);
 const JOB_TTL_HOURS = Number(process.env.JOB_TTL_HOURS || 0);
 const LOG_RENDERER_OUTPUT = process.env.LOG_RENDERER_OUTPUT === "1";
+const RENDER_CONCURRENCY = Math.max(
+  1,
+  Number(process.env.RENDER_CONCURRENCY || 1)
+);
+const AUTO_CLEANUP_JOBS = process.env.AUTO_CLEANUP_JOBS === "1";
 
 // Ensure jobs root exists
 fs.mkdirSync(JOBS_ROOT, { recursive: true });
+
+/* -----------------------------
+   Simple render queue
+--------------------------------*/
+
+const renderQueue = [];
+let runningCount = 0;
+
+function withRenderSlot(fn) {
+  return new Promise((resolve, reject) => {
+    renderQueue.push({ fn, resolve, reject });
+    drainQueue();
+  });
+}
+
+function drainQueue() {
+  while (runningCount < RENDER_CONCURRENCY && renderQueue.length > 0) {
+    const job = renderQueue.shift();
+    runningCount += 1;
+    job
+      .fn()
+      .then((res) => job.resolve(res))
+      .catch((err) => job.reject(err))
+      .finally(() => {
+        runningCount -= 1;
+        drainQueue();
+      });
+  }
+}
 
 /* -----------------------------
    Auth middleware
@@ -230,82 +264,108 @@ app.post(
       }
       await fsp.writeFile(specPath, JSON.stringify(spec), "utf-8");
 
-      // Build renderer command
-      const { cmd, args } = buildCmd(jobDir);
-      console.log(`Renderer start: ${jobId}`);
-      console.log(`Renderer cmd: ${[cmd, ...args].join(" ")}`);
+      await withRenderSlot(
+        () =>
+          new Promise((resolve) => {
+            // Build renderer command
+            const { cmd, args } = buildCmd(jobDir);
+            console.log(`Renderer start: ${jobId}`);
+            console.log(`Renderer cmd: ${[cmd, ...args].join(" ")}`);
 
-      const child = spawn(cmd, args, {
-        cwd: jobDir,
-        stdio: ["ignore", "pipe", "pipe"],
-        env: process.env, // keep env vars (JAVA_TOOL_OPTIONS, LIBGL_ALWAYS_SOFTWARE, etc.)
-      });
+            const child = spawn(cmd, args, {
+              cwd: jobDir,
+              stdio: ["ignore", "pipe", "pipe"],
+              env: process.env, // keep env vars (JAVA_TOOL_OPTIONS, LIBGL_ALWAYS_SOFTWARE, etc.)
+            });
 
-      let stdout = "";
-      let stderr = "";
+            let stdout = "";
+            let stderr = "";
 
-      child.stdout.on("data", (d) => {
-        const text = d.toString();
-        stdout += text;
-        if (LOG_RENDERER_OUTPUT) {
-          console.log(`[renderer ${jobId} stdout] ${text}`.trimEnd());
-        }
-      });
-      child.stderr.on("data", (d) => {
-        const text = d.toString();
-        stderr += text;
-        if (LOG_RENDERER_OUTPUT) {
-          console.log(`[renderer ${jobId} stderr] ${text}`.trimEnd());
-        }
-      });
+            child.stdout.on("data", (d) => {
+              const text = d.toString();
+              stdout += text;
+              if (LOG_RENDERER_OUTPUT) {
+                console.log(`[renderer ${jobId} stdout] ${text}`.trimEnd());
+              }
+            });
+            child.stderr.on("data", (d) => {
+              const text = d.toString();
+              stderr += text;
+              if (LOG_RENDERER_OUTPUT) {
+                console.log(`[renderer ${jobId} stderr] ${text}`.trimEnd());
+              }
+            });
 
-      let timedOut = false;
-      const timeout = setTimeout(() => {
-        timedOut = true;
-        child.kill("SIGKILL");
-      }, RENDER_TIMEOUT_MS);
+            let timedOut = false;
+            const timeout = setTimeout(() => {
+              timedOut = true;
+              child.kill("SIGKILL");
+            }, RENDER_TIMEOUT_MS);
 
-      let responded = false;
-      const sendOnce = (status, payload) => {
-        if (responded) return;
-        responded = true;
-        res.status(status).json(payload);
-      };
+            let responded = false;
+            const sendOnce = (status, payload) => {
+              if (responded) return;
+              responded = true;
+              res.status(status).json(payload);
+            };
 
-      child.on("error", (err) => {
-        clearTimeout(timeout);
-        sendOnce(500, {
-          error: "Renderer failed to start",
-          message: err?.message || String(err),
-          cmd: [cmd, ...args].join(" "),
-        });
-      });
+            const killChild = () => {
+              try {
+                child.kill("SIGKILL");
+              } catch {}
+            };
 
-      child.on("close", async (code) => {
-        clearTimeout(timeout);
+            req.on("close", () => {
+              if (!responded) {
+                killChild();
+              }
+            });
 
-        if (code !== 0) {
-          return sendOnce(500, {
-            error: timedOut ? "Renderer timed out" : "Renderer failed",
-            exitCode: code,
-            cmd: [cmd, ...args].join(" "),
-            stdout,
-            stderr,
-          });
-        }
+            child.on("error", (err) => {
+              clearTimeout(timeout);
+              sendOnce(500, {
+                error: "Renderer failed to start",
+                message: err?.message || String(err),
+                cmd: [cmd, ...args].join(" "),
+              });
+              resolve();
+            });
 
-        // Success
-        sendOnce(200, {
-          ok: true,
-          jobId,
-          files: {
-            pes: `/api/jobs/${jobId}/design.pes`,
-            preview: `/api/jobs/${jobId}/preview.png`,
-          },
-          pesUrl: `/api/jobs/${jobId}/design.pes`,
-          previewUrl: `/api/jobs/${jobId}/preview.png`,
-        });
-      });
+            child.on("close", async (code) => {
+              clearTimeout(timeout);
+
+              if (code !== 0) {
+                sendOnce(500, {
+                  error: timedOut ? "Renderer timed out" : "Renderer failed",
+                  exitCode: code,
+                  cmd: [cmd, ...args].join(" "),
+                  stdout,
+                  stderr,
+                });
+              } else {
+                // Success
+                sendOnce(200, {
+                  ok: true,
+                  jobId,
+                  files: {
+                    pes: `/api/jobs/${jobId}/design.pes`,
+                    preview: `/api/jobs/${jobId}/preview.png`,
+                  },
+                  pesUrl: `/api/jobs/${jobId}/design.pes`,
+                  previewUrl: `/api/jobs/${jobId}/preview.png`,
+                });
+              }
+
+              if (AUTO_CLEANUP_JOBS) {
+                try {
+                  await fsp.rm(jobDir, { recursive: true, force: true });
+                } catch {}
+              }
+
+              resolve();
+            });
+          })
+      );
     } catch (err) {
       res.status(500).json({
         error: "Server error",
