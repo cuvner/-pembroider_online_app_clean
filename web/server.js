@@ -59,6 +59,10 @@ const RENDER_CONCURRENCY = Math.max(
   Number(process.env.RENDER_CONCURRENCY || 1)
 );
 const AUTO_CLEANUP_JOBS = process.env.AUTO_CLEANUP_JOBS === "1";
+const AUTO_CLEANUP_DELAY_MS = Math.max(
+  0,
+  Number(process.env.AUTO_CLEANUP_DELAY_MS || 300_000)
+);
 
 // Ensure jobs root exists
 fs.mkdirSync(JOBS_ROOT, { recursive: true });
@@ -357,9 +361,11 @@ app.post(
               }
 
               if (AUTO_CLEANUP_JOBS) {
-                try {
-                  await fsp.rm(jobDir, { recursive: true, force: true });
-                } catch {}
+                setTimeout(async () => {
+                  try {
+                    await fsp.rm(jobDir, { recursive: true, force: true });
+                  } catch {}
+                }, AUTO_CLEANUP_DELAY_MS).unref();
               }
 
               resolve();
