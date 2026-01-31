@@ -114,8 +114,14 @@ void setup() {
     renderLayer(E, L, designScale);
   }
 
-  // Optimize (can be slow, but generally worth it)
-  E.optimize();
+  // Optimize (can be slow on large designs)
+  boolean doOptimize = true;
+  if (spec.hasKey("optimize")) {
+    doOptimize = spec.getBoolean("optimize");
+  }
+  if (doOptimize) {
+    E.optimize();
+  }
 
   // Preview image (draws to the Processing canvas even if hidden)
   E.visualize(true, true, true);
