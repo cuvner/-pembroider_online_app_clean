@@ -17,39 +17,38 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ---- Processing portable (Linux x64) ----
 # Download bundle during build to avoid missing Git LFS assets in remote builders.
 # Override the URL to pin a different version if needed.
-ARG PROCESSING_ZIP_URL=https://github.com/processing/processing4/releases/download/processing-1313-4.5.2/processing-4.5.2-linux-x64-portable.zip
-ARG PROCESSING_ZIP_SHA256=5d5ce0f5a59cffc86f12b49997184434f554ff546932323f148aad92626bc3ff
+# Use Processing 3.5.4 to keep processing-java CLI support.
+ARG PROCESSING_ARCHIVE_URL=https://github.com/processing/processing/releases/download/processing-0270-3.5.4/processing-3.5.4-linux64.tgz
+ARG PROCESSING_ARCHIVE_SHA256=
 RUN set -eux; \
-  wget -O /tmp/processing.zip "$PROCESSING_ZIP_URL"; \
-  if [ -n "$PROCESSING_ZIP_SHA256" ]; then \
-    echo "$PROCESSING_ZIP_SHA256  /tmp/processing.zip" | sha256sum -c -; \
+  wget -O /tmp/processing.tgz "$PROCESSING_ARCHIVE_URL"; \
+  if [ -n "$PROCESSING_ARCHIVE_SHA256" ]; then \
+    echo "$PROCESSING_ARCHIVE_SHA256  /tmp/processing.tgz" | sha256sum -c -; \
   fi
 
 RUN set -eux; \
   rm -rf /opt/processing_unpack; \
   mkdir -p /opt/processing_unpack; \
-  unzip -q /tmp/processing.zip -d /opt/processing_unpack; \
-  rm /tmp/processing.zip; \
-  echo "=== locating Processing launcher ==="; \
-  # Processing 4 portable bundles ship a launcher at Processing/bin/Processing
-  PAPP="$(find /opt/processing_unpack -type f -path '*/bin/Processing' | head -n 1)"; \
-  echo "Found Processing launcher: ${PAPP:-<none>}"; \
-  test -n "$PAPP"; \
-  chmod +x "$PAPP" || true; \
-  PROCESSING_HOME="$(dirname "$(dirname "$PAPP")")"; \
-  echo "Processing home: $PROCESSING_HOME"; \
-  # Locate CLI runner (processing-java) for headless sketches
-  PJAVA="$(find "$PROCESSING_HOME" -maxdepth 2 -type f -name 'processing-java' | head -n 1)"; \
+  tar -xzf /tmp/processing.tgz -C /opt/processing_unpack; \
+  rm /tmp/processing.tgz; \
+  echo "=== locating Processing CLI ==="; \
+  PJAVA="$(find /opt/processing_unpack -type f -name 'processing-java' | head -n 1)"; \
   echo "Found processing-java: ${PJAVA:-<none>}"; \
   test -n "$PJAVA"; \
   chmod +x "$PJAVA" || true; \
+  PROCESSING_HOME="$(dirname "$PJAVA")"; \
+  echo "Processing home: $PROCESSING_HOME"; \
+  PAPP="$PROCESSING_HOME/processing"; \
+  echo "Found Processing launcher: ${PAPP:-<none>}"; \
+  test -n "$PAPP"; \
+  chmod +x "$PAPP" || true; \
   printf '%s\n' \
     '#!/bin/sh' \
     'APPDIR="'"$PROCESSING_HOME"'"' \
     'export APPDIR' \
     'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
     'export JAVA_HOME="$APPDIR/lib/runtime"' \
-    'exec "$APPDIR/bin/Processing" "$@"' \
+    'exec "$APPDIR/processing" "$@"' \
     > /usr/local/bin/processing; \
   printf '%s\n' \
     '#!/bin/sh' \
