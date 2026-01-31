@@ -9,7 +9,7 @@
     h1 { margin: 0 0 12px; }
     .row { margin: 12px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
     .layers { margin-top: 12px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-    .layer { display: grid; grid-template-columns: 1fr 120px 170px 140px 120px 120px; gap: 10px; padding: 10px; border-top: 1px solid #eee; align-items: center; }
+    .layer { display: grid; grid-template-columns: 1fr 120px 170px 140px 120px 160px 140px; gap: 10px; padding: 10px; border-top: 1px solid #eee; align-items: center; }
     .layer:first-child { border-top: 0; }
     .layer code { font-size: 12px; }
     label { font-size: 14px; }
@@ -108,6 +108,14 @@
 
 <script>
 const PATTERNS = ["CONCENTRIC","CROSS","PARALLEL","SATIN","SPIRAL","PERLIN"];
+const PATTERN_DEFAULTS = {
+  PARALLEL: { spacing: 4, angles: [0, 90], stitch: [10, 20, 0] },
+  CROSS: { spacing: 4, angles: [0, 90], stitch: [10, 20, 0] },
+  CONCENTRIC: { spacing: 3, angles: [0, 90], stitch: [8, 16, 0] },
+  SATIN: { spacing: 3, angles: [0, 90], stitch: [6, 12, 0] },
+  SPIRAL: { spacing: 4, angles: [0, 90], stitch: [8, 16, 0] },
+  PERLIN: { spacing: 5, angles: [0, 90], stitch: [10, 20, 1] },
+};
 
 const filesEl = document.getElementById("files");
 const layersEl = document.getElementById("layers");
@@ -164,6 +172,7 @@ function renderLayerRows(fileList) {
     <div>Pattern</div>
     <div>Angles (deg)</div>
     <div>Move</div>
+    <div>Stitch (len/gap/jit)</div>
     <div></div>
   `;
   layersEl.appendChild(header);
@@ -180,7 +189,8 @@ function renderLayerRows(fileList) {
     color.type = "color";
     color.value = (idx % 2 === 0) ? "#ff0000" : "#00009b";
 
-    const pattern = makePatternSelect(idx % 2 === 0 ? "CONCENTRIC" : "CROSS");
+    const defaultPattern = (idx % 2 === 0) ? "CONCENTRIC" : "CROSS";
+    const pattern = makePatternSelect(defaultPattern);
 
     const angles = document.createElement("div");
     angles.style.display = "flex";
@@ -188,11 +198,9 @@ function renderLayerRows(fileList) {
     const a1 = document.createElement("input");
     a1.type = "number";
     a1.step = "1";
-    a1.value = (idx % 2 === 0) ? 0 : 90;
     const a2 = document.createElement("input");
     a2.type = "number";
     a2.step = "1";
-    a2.value = (idx % 2 === 0) ? 0 : 75;
     angles.appendChild(a1);
     angles.appendChild(a2);
 
@@ -222,13 +230,54 @@ function renderLayerRows(fileList) {
     });
     remove.addEventListener("click", () => row.remove());
 
-    row._controls = { color, pattern, a1, a2 };
+    const defaults = PATTERN_DEFAULTS[defaultPattern];
+    a1.value = defaults.angles[0];
+    a2.value = defaults.angles[1];
+
+    const spacing = document.createElement("input");
+    spacing.type = "number";
+    spacing.step = "0.5";
+    spacing.min = "0.5";
+    spacing.value = defaults.spacing;
+
+    const stitchLen = document.createElement("input");
+    stitchLen.type = "number";
+    stitchLen.step = "1";
+    stitchLen.value = defaults.stitch[0];
+    const stitchGap = document.createElement("input");
+    stitchGap.type = "number";
+    stitchGap.step = "1";
+    stitchGap.value = defaults.stitch[1];
+    const stitchJit = document.createElement("input");
+    stitchJit.type = "number";
+    stitchJit.step = "0.5";
+    stitchJit.value = defaults.stitch[2];
+
+    const stitchBox = document.createElement("div");
+    stitchBox.style.display = "flex";
+    stitchBox.style.gap = "6px";
+    stitchBox.appendChild(stitchLen);
+    stitchBox.appendChild(stitchGap);
+    stitchBox.appendChild(stitchJit);
+
+    pattern.addEventListener("change", () => {
+      const d = PATTERN_DEFAULTS[pattern.value] || PATTERN_DEFAULTS.PARALLEL;
+      spacing.value = d.spacing;
+      a1.value = d.angles[0];
+      a2.value = d.angles[1];
+      stitchLen.value = d.stitch[0];
+      stitchGap.value = d.stitch[1];
+      stitchJit.value = d.stitch[2];
+    });
+
+    row._controls = { color, pattern, a1, a2, spacing, stitchLen, stitchGap, stitchJit };
 
     row.appendChild(name);
     row.appendChild(color);
     row.appendChild(pattern);
     row.appendChild(angles);
     row.appendChild(move);
+    row.appendChild(stitchBox);
     row.appendChild(remove);
 
     layersEl.appendChild(row);
@@ -283,14 +332,14 @@ document.getElementById("go").addEventListener("click", async () => {
     maxPixels: isFinite(maxPixels) ? maxPixels : 1000000,
     maxDimension: isFinite(maxDim) ? maxDim : 1200,
     layers: rows.map((row) => {
-      const { color, pattern, a1, a2 } = row._controls;
+      const { color, pattern, a1, a2, spacing, stitchLen, stitchGap, stitchJit } = row._controls;
       return {
         file: row.dataset.filename,
         color: hexToRgb(color.value),
         pattern: pattern.value,
-        spacing: spacing,
+        spacing: parseFloat(spacing.value),
         angles: [parseFloat(a1.value), parseFloat(a2.value)],
-        stitch: [10, 20, 0],
+        stitch: [parseFloat(stitchLen.value), parseFloat(stitchGap.value), parseFloat(stitchJit.value)],
         thresholdEnabled,
         threshold
       };

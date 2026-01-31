@@ -258,8 +258,8 @@ void renderLayer(PEmbroiderGraphics E, JSONObject L, float designScale) {
   // Angles (degrees in spec)
   if (L.hasKey("angles")) {
     JSONArray a = L.getJSONArray("angles");
-    if (a != null && a.size() >= 1) E.HATCH_ANGLE  = radians(a.getFloat(0));
-    if (a != null && a.size() >= 2) E.HATCH_ANGLE2 = radians(a.getFloat(1));
+    if (a != null && a.size() >= 1) E.HATCH_ANGLE  = radians(getNumber(a, 0, 0));
+    if (a != null && a.size() >= 2) E.HATCH_ANGLE2 = radians(getNumber(a, 1, 90));
   } else {
     E.HATCH_ANGLE  = radians(0);
     E.HATCH_ANGLE2 = radians(90);
@@ -269,9 +269,9 @@ void renderLayer(PEmbroiderGraphics E, JSONObject L, float designScale) {
   if (L.hasKey("stitch")) {
     JSONArray s = L.getJSONArray("stitch");
     if (s != null && s.size() >= 2) {
-      float len = s.getFloat(0);
-      float gap = s.getFloat(1);
-      float jit = (s.size() >= 3) ? s.getFloat(2) : 0.0;
+      float len = getNumber(s, 0, 10);
+      float gap = getNumber(s, 1, 20);
+      float jit = (s.size() >= 3) ? getNumber(s, 2, 0) : 0.0;
       E.setStitch(len, gap, jit);
     }
   }
@@ -281,9 +281,9 @@ void renderLayer(PEmbroiderGraphics E, JSONObject L, float designScale) {
   if (L.hasKey("color")) {
     JSONArray c = L.getJSONArray("color");
     if (c != null && c.size() >= 3) {
-      r = int(c.getFloat(0));
-      g = int(c.getFloat(1));
-      b = int(c.getFloat(2));
+      r = int(getNumber(c, 0, 0));
+      g = int(getNumber(c, 1, 0));
+      b = int(getNumber(c, 2, 0));
     }
   }
   E.fill(r, g, b);
@@ -352,4 +352,18 @@ int parseHatchMode(String name) {
 
   println("WARN: Unknown pattern '" + name + "'. Using PARALLEL.");
   return PEmbroiderGraphics.PARALLEL;
+}
+
+float getNumber(JSONArray arr, int idx, float def) {
+  try {
+    return arr.getFloat(idx);
+  } catch (Exception e) {
+    try {
+      String s = arr.getString(idx);
+      if (s == null) return def;
+      return Float.parseFloat(s.trim());
+    } catch (Exception e2) {
+      return def;
+    }
+  }
 }
