@@ -69,6 +69,10 @@
       <input id="thresholdEnabled" type="checkbox" checked>
       Auto mask (threshold PNGs)
     </label>
+    <label class="small">
+      <input id="optimize" type="checkbox" checked>
+      Optimize stitch order (slower)
+    </label>
   </div>
 
   <div class="small">
@@ -98,6 +102,7 @@ const scaleEl = document.getElementById("scale");
 const thresholdEl = document.getElementById("threshold");
 const thresholdValEl = document.getElementById("thresholdVal");
 const thresholdEnabledEl = document.getElementById("thresholdEnabled");
+const optimizeEl = document.getElementById("optimize");
 
 thresholdEl.addEventListener("input", () => {
   thresholdValEl.textContent = thresholdEl.value;
@@ -237,12 +242,14 @@ document.getElementById("go").addEventListener("click", async () => {
 
   const threshold = parseInt(thresholdEl.value, 10);
   const thresholdEnabled = thresholdEnabledEl.checked;
+  const optimize = optimizeEl.checked;
 
   const spec = {
     width: size,
     height: size,
     designScale: designScale,
     output: { format: "pes", filename: "design" },
+    optimize: optimize,
     layers: rows.map((row) => {
       const { color, pattern, a1, a2 } = row._controls;
       return {
