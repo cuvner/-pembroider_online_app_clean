@@ -81,7 +81,7 @@ ENV PROCESSING_WRAPPER_ARGS=-a
 
 # Reduce GPU/GL issues
 ENV LIBGL_ALWAYS_SOFTWARE=1
-ENV JAVA_TOOL_OPTIONS="-Djava.awt.headless=false -Djava2d.opengl=false"
+ENV JAVA_TOOL_OPTIONS="-Djava.awt.headless=false -Djava2d.opengl=false -Duser.home=/app"
 
 WORKDIR /app
 
@@ -94,9 +94,10 @@ COPY renderer /app/renderer
 COPY processing-libraries /app/processing-libraries
 COPY web /app/web
 
-RUN mkdir -p /app/sketchbook /app/.processing \
+RUN mkdir -p /app/sketchbook /app/.processing /root/.processing \
   && ln -sfn /app/processing-libraries/libraries /app/sketchbook/libraries \
-  && printf '%s\n' "sketchbook.path=/app/processing-libraries" > /app/.processing/preferences.txt
+  && printf '%s\n' "sketchbook.path=/app/processing-libraries" > /app/.processing/preferences.txt \
+  && printf '%s\n' "sketchbook.path=/app/processing-libraries" > /root/.processing/preferences.txt
 
 # Ensure the renderer sketch has a local copy of the PEmbroider library.
 RUN mkdir -p /app/renderer/libraries \
