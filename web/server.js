@@ -151,7 +151,7 @@ async function cleanupJobs() {
           await fsp.rm(dir, { recursive: true, force: true });
         }
       } catch {}
-    })
+    }),
   );
 }
 
@@ -297,7 +297,7 @@ app.post(
         message: err?.message || String(err),
       });
     }
-  }
+  },
 );
 
 // Download outputs
