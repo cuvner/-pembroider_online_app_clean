@@ -39,6 +39,8 @@ const RENDERER_SKETCH =
 // Processing (Dockerfile provides /usr/local/bin/processing-java)
 const PROCESSING_BIN =
   process.env.PROCESSING_BIN || "/usr/local/bin/processing-java";
+const PROCESSING_GUI =
+  process.env.PROCESSING_GUI || "/usr/local/bin/processing";
 
 // Headless wrapper (xvfb-run in Docker)
 const PROCESSING_WRAPPER = process.env.PROCESSING_WRAPPER || null;
@@ -185,6 +187,7 @@ app.get("/api/health", (_req, res) => {
   res.json({
     ok: true,
     processingBin: PROCESSING_BIN,
+    processingGui: PROCESSING_GUI,
     rendererSketch: RENDERER_SKETCH,
     jobsRoot: JOBS_ROOT,
     sketchbook: PROCESSING_SKETCHBOOK,
@@ -317,6 +320,7 @@ if (isMain) {
   app.listen(PORT, () => {
     console.log(`PEmbroider server running on port ${PORT}`);
     console.log(`Processing binary: ${PROCESSING_BIN}`);
+    console.log(`Processing GUI: ${PROCESSING_GUI}`);
     console.log(`Renderer sketch: ${RENDERER_SKETCH}`);
     console.log(`Jobs root: ${JOBS_ROOT}`);
     console.log(`Sketchbook: ${PROCESSING_SKETCHBOOK}`);

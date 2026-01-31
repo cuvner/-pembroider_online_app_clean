@@ -38,6 +38,11 @@ RUN set -eux; \
   chmod +x "$PAPP" || true; \
   PROCESSING_HOME="$(dirname "$(dirname "$PAPP")")"; \
   echo "Processing home: $PROCESSING_HOME"; \
+  # Locate CLI runner (processing-java) for headless sketches
+  PJAVA="$(find "$PROCESSING_HOME" -maxdepth 2 -type f -name 'processing-java' | head -n 1)"; \
+  echo "Found processing-java: ${PJAVA:-<none>}"; \
+  test -n "$PJAVA"; \
+  chmod +x "$PJAVA" || true; \
   printf '%s\n' \
     '#!/bin/sh' \
     'APPDIR="'"$PROCESSING_HOME"'"' \
@@ -46,7 +51,16 @@ RUN set -eux; \
     'export JAVA_HOME="$APPDIR/lib/runtime"' \
     'exec "$APPDIR/bin/Processing" "$@"' \
     > /usr/local/bin/processing; \
+  printf '%s\n' \
+    '#!/bin/sh' \
+    'APPDIR="'"$PROCESSING_HOME"'"' \
+    'export APPDIR' \
+    'export LD_LIBRARY_PATH="$APPDIR/lib:$LD_LIBRARY_PATH"' \
+    'export JAVA_HOME="$APPDIR/lib/runtime"' \
+    'exec "'"$PJAVA"'" "$@"' \
+    > /usr/local/bin/processing-java; \
   chmod +x /usr/local/bin/processing; \
+  chmod +x /usr/local/bin/processing-java; \
   /usr/local/bin/processing --help || true
 
 # ---- Environment: headless + safer rendering ----
@@ -58,8 +72,8 @@ ENV JOBS_ROOT=/app/jobs
 ENV RENDERER_SKETCH=/app/renderer
 ENV PROCESSING_SKETCHBOOK=/app/processing-libraries
 
-# Use the portable Processing launcher
-ENV PROCESSING_BIN=/usr/local/bin/processing
+# Use processing-java CLI for headless runs
+ENV PROCESSING_BIN=/usr/local/bin/processing-java
 
 # Use Xvfb wrapper
 ENV PROCESSING_WRAPPER=xvfb-run
