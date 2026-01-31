@@ -15,8 +15,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   && rm -rf /var/lib/apt/lists/*
 
 # ---- Processing portable (Linux x64) ----
-# Use vendored bundle to avoid remote fetch during build.
-COPY vendor/processing.zip /tmp/processing.zip
+# Download bundle during build to avoid missing Git LFS assets in remote builders.
+# Override the URL to pin a different version if needed.
+ARG PROCESSING_ZIP_URL=https://download.processing.org/processing-4.5.2-linux-x64.zip
+ARG PROCESSING_ZIP_SHA256=
+RUN set -eux; \
+  wget -O /tmp/processing.zip "$PROCESSING_ZIP_URL"; \
+  if [ -n "$PROCESSING_ZIP_SHA256" ]; then \
+    echo "$PROCESSING_ZIP_SHA256  /tmp/processing.zip" | sha256sum -c -; \
+  fi
 
 RUN set -eux; \
   rm -rf /opt/processing_unpack; \
