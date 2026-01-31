@@ -98,6 +98,11 @@ RUN mkdir -p /app/sketchbook /app/.processing \
   && ln -sfn /app/processing-libraries/libraries /app/sketchbook/libraries \
   && printf '%s\n' "sketchbook.path=/app/processing-libraries" > /app/.processing/preferences.txt
 
+# Ensure the renderer sketch has a local copy of the PEmbroider library.
+RUN mkdir -p /app/renderer/libraries \
+  && rm -rf /app/renderer/libraries/PEmbroider \
+  && cp -R /app/processing-libraries/libraries/PEmbroider /app/renderer/libraries/PEmbroider
+
 RUN mkdir -p /app/jobs
 
 EXPOSE 3000
