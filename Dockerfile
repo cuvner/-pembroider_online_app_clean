@@ -70,6 +70,7 @@ ENV APP_ROOT=/app
 ENV JOBS_ROOT=/app/jobs
 ENV RENDERER_SKETCH=/app/renderer
 ENV PROCESSING_SKETCHBOOK=/app/processing-libraries
+ENV HOME=/app
 
 # Use processing-java CLI for headless runs
 ENV PROCESSING_BIN=/usr/local/bin/processing-java
@@ -92,6 +93,9 @@ RUN cd /app/web && npm ci --omit=dev
 COPY renderer /app/renderer
 COPY processing-libraries /app/processing-libraries
 COPY web /app/web
+
+RUN mkdir -p /app/sketchbook \
+  && ln -sfn /app/processing-libraries/libraries /app/sketchbook/libraries
 
 RUN mkdir -p /app/jobs
 

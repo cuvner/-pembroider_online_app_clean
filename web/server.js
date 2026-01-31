@@ -121,7 +121,6 @@ function makeJobId() {
 function buildCmd(jobDir) {
   // processing-java does NOT use "cli"
   const args = [
-    `--sketchbook=${PROCESSING_SKETCHBOOK}`,
     `--sketch=${RENDERER_SKETCH}`,
     "--run",
     "--",
