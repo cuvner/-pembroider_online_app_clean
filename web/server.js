@@ -73,10 +73,11 @@ fs.mkdirSync(JOBS_ROOT, { recursive: true });
 
 const renderQueue = [];
 let runningCount = 0;
+const jobs = new Map();
 
-function withRenderSlot(fn) {
+function withRenderSlot(id, fn) {
   return new Promise((resolve, reject) => {
-    renderQueue.push({ fn, resolve, reject });
+    renderQueue.push({ id, fn, resolve, reject });
     drainQueue();
   });
 }
@@ -252,6 +253,9 @@ app.post(
       }
 
       const { jobId, jobDir } = req;
+      const statusUrl = `/api/jobs/${jobId}/status`;
+      const pesUrl = `/api/jobs/${jobId}/design.pes`;
+      const previewUrl = `/api/jobs/${jobId}/preview.png`;
 
       // Save spec.json
       const specPath = path.join(jobDir, "spec.json");
@@ -268,13 +272,29 @@ app.post(
       }
       await fsp.writeFile(specPath, JSON.stringify(spec), "utf-8");
 
-      await withRenderSlot(
+      jobs.set(jobId, {
+        status: "queued",
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        stdout: "",
+        stderr: "",
+        error: null,
+      });
+
+      withRenderSlot(
+        jobId,
         () =>
           new Promise((resolve) => {
             // Build renderer command
             const { cmd, args } = buildCmd(jobDir);
             console.log(`Renderer start: ${jobId}`);
             console.log(`Renderer cmd: ${[cmd, ...args].join(" ")}`);
+
+            const job = jobs.get(jobId);
+            if (job) {
+              job.status = "running";
+              job.updatedAt = Date.now();
+            }
 
             const child = spawn(cmd, args, {
               cwd: jobDir,
@@ -306,32 +326,15 @@ app.post(
               child.kill("SIGKILL");
             }, RENDER_TIMEOUT_MS);
 
-            let responded = false;
-            const sendOnce = (status, payload) => {
-              if (responded) return;
-              responded = true;
-              res.status(status).json(payload);
-            };
-
-            const killChild = () => {
-              try {
-                child.kill("SIGKILL");
-              } catch {}
-            };
-
-            req.on("close", () => {
-              if (!responded) {
-                killChild();
-              }
-            });
-
             child.on("error", (err) => {
               clearTimeout(timeout);
-              sendOnce(500, {
-                error: "Renderer failed to start",
-                message: err?.message || String(err),
-                cmd: [cmd, ...args].join(" "),
-              });
+              if (job) {
+                job.status = "error";
+                job.updatedAt = Date.now();
+                job.error = err?.message || String(err);
+                job.stdout = stdout;
+                job.stderr = stderr;
+              }
               resolve();
             });
 
@@ -339,25 +342,22 @@ app.post(
               clearTimeout(timeout);
 
               if (code !== 0) {
-                sendOnce(500, {
-                  error: timedOut ? "Renderer timed out" : "Renderer failed",
-                  exitCode: code,
-                  cmd: [cmd, ...args].join(" "),
-                  stdout,
-                  stderr,
-                });
+                if (job) {
+                  job.status = "error";
+                  job.updatedAt = Date.now();
+                  job.error = timedOut ? "Renderer timed out" : "Renderer failed";
+                  job.exitCode = code;
+                  job.cmd = [cmd, ...args].join(" ");
+                  job.stdout = stdout;
+                  job.stderr = stderr;
+                }
               } else {
-                // Success
-                sendOnce(200, {
-                  ok: true,
-                  jobId,
-                  files: {
-                    pes: `/api/jobs/${jobId}/design.pes`,
-                    preview: `/api/jobs/${jobId}/preview.png`,
-                  },
-                  pesUrl: `/api/jobs/${jobId}/design.pes`,
-                  previewUrl: `/api/jobs/${jobId}/preview.png`,
-                });
+                if (job) {
+                  job.status = "done";
+                  job.updatedAt = Date.now();
+                  job.stdout = stdout;
+                  job.stderr = stderr;
+                }
               }
 
               if (AUTO_CLEANUP_JOBS) {
@@ -372,6 +372,14 @@ app.post(
             });
           })
       );
+
+      return res.status(202).json({
+        ok: true,
+        jobId,
+        statusUrl,
+        pesUrl,
+        previewUrl,
+      });
     } catch (err) {
       res.status(500).json({
         error: "Server error",
@@ -388,6 +396,41 @@ app.get("/api/jobs/:id/:file", async (req, res) => {
     return res.status(404).send("Not found");
   }
   res.sendFile(filePath);
+});
+
+// Job status
+app.get("/api/jobs/:id/status", (req, res) => {
+  const job = jobs.get(req.params.id);
+  if (!job) {
+    return res.status(404).json({ error: "Unknown job" });
+  }
+
+  const queuedIndex = renderQueue.findIndex((q) => q.id === req.params.id);
+  const queuePosition = queuedIndex >= 0 ? queuedIndex + 1 : null;
+
+  if (job.status === "error") {
+    return res.json({
+      status: "error",
+      message: job.error || "Renderer failed",
+      exitCode: job.exitCode,
+      cmd: job.cmd,
+      stderr: job.stderr,
+      stdout: job.stdout,
+    });
+  }
+
+  if (job.status === "done") {
+    return res.json({
+      status: "done",
+      previewUrl: `/api/jobs/${req.params.id}/preview.png`,
+      pesUrl: `/api/jobs/${req.params.id}/design.pes`,
+    });
+  }
+
+  return res.json({
+    status: job.status,
+    queuePosition,
+  });
 });
 
 // Serve frontend (robust absolute path)
