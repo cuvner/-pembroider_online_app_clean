@@ -389,15 +389,6 @@ app.post(
   },
 );
 
-// Download outputs
-app.get("/api/jobs/:id/:file", async (req, res) => {
-  const filePath = path.join(JOBS_ROOT, req.params.id, "out", req.params.file);
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).send("Not found");
-  }
-  res.sendFile(filePath);
-});
-
 // Job status
 app.get("/api/jobs/:id/status", (req, res) => {
   const job = jobs.get(req.params.id);
@@ -431,6 +422,15 @@ app.get("/api/jobs/:id/status", (req, res) => {
     status: job.status,
     queuePosition,
   });
+});
+
+// Download outputs
+app.get("/api/jobs/:id/:file", async (req, res) => {
+  const filePath = path.join(JOBS_ROOT, req.params.id, "out", req.params.file);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).send("Not found");
+  }
+  res.sendFile(filePath);
 });
 
 // Serve frontend (robust absolute path)
