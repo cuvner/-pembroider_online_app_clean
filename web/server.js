@@ -391,12 +391,28 @@ app.post(
 
 // Job status
 app.get("/api/jobs/:id/status", (req, res) => {
-  const job = jobs.get(req.params.id);
+  const jobId = req.params.id;
+  const job = jobs.get(jobId);
   if (!job) {
+    const jobDir = path.join(JOBS_ROOT, jobId);
+    const outDir = path.join(jobDir, "out");
+    const pesPath = path.join(outDir, "design.pes");
+    const previewPath = path.join(outDir, "preview.png");
+    if (fs.existsSync(pesPath) && fs.existsSync(previewPath)) {
+      return res.json({
+        status: "done",
+        previewUrl: `/api/jobs/${jobId}/preview.png`,
+        pesUrl: `/api/jobs/${jobId}/design.pes`,
+        stale: true,
+      });
+    }
+    if (fs.existsSync(jobDir)) {
+      return res.json({ status: "running", stale: true });
+    }
     return res.status(404).json({ error: "Unknown job" });
   }
 
-  const queuedIndex = renderQueue.findIndex((q) => q.id === req.params.id);
+  const queuedIndex = renderQueue.findIndex((q) => q.id === jobId);
   const queuePosition = queuedIndex >= 0 ? queuedIndex + 1 : null;
 
   if (job.status === "error") {
