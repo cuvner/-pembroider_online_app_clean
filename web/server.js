@@ -303,7 +303,7 @@ app.post(
             if (job) {
               job.status = "running";
               job.updatedAt = Date.now();
-              await writeJobStatus(jobId, job);
+              writeJobStatus(jobId, job).catch(() => {});
             }
 
             const child = spawn(cmd, args, {
@@ -344,7 +344,7 @@ app.post(
                 job.error = err?.message || String(err);
                 job.stdout = stdout;
                 job.stderr = stderr;
-                await writeJobStatus(jobId, job);
+                writeJobStatus(jobId, job).catch(() => {});
               }
               resolve();
             });
@@ -361,7 +361,7 @@ app.post(
                   job.cmd = [cmd, ...args].join(" ");
                   job.stdout = stdout;
                   job.stderr = stderr;
-                  await writeJobStatus(jobId, job);
+                  writeJobStatus(jobId, job).catch(() => {});
                 }
               } else {
                 if (job) {
@@ -369,7 +369,7 @@ app.post(
                   job.updatedAt = Date.now();
                   job.stdout = stdout;
                   job.stderr = stderr;
-                  await writeJobStatus(jobId, job);
+                  writeJobStatus(jobId, job).catch(() => {});
                 }
               }
 
