@@ -74,6 +74,7 @@ fs.mkdirSync(JOBS_ROOT, { recursive: true });
 const renderQueue = [];
 let runningCount = 0;
 const jobs = new Map();
+const jobProcesses = new Map();
 
 async function writeJobStatus(jobId, statusObj) {
   const jobDir = path.join(JOBS_ROOT, jobId);
@@ -311,6 +312,7 @@ app.post(
               stdio: ["ignore", "pipe", "pipe"],
               env: process.env, // keep env vars (JAVA_TOOL_OPTIONS, LIBGL_ALWAYS_SOFTWARE, etc.)
             });
+            jobProcesses.set(jobId, child);
 
             let stdout = "";
             let stderr = "";
@@ -346,6 +348,7 @@ app.post(
                 job.stderr = stderr;
                 writeJobStatus(jobId, job).catch(() => {});
               }
+              jobProcesses.delete(jobId);
               resolve();
             });
 
@@ -381,6 +384,7 @@ app.post(
                 }, AUTO_CLEANUP_DELAY_MS).unref();
               }
 
+              jobProcesses.delete(jobId);
               resolve();
             });
           })
@@ -478,6 +482,34 @@ app.get("/api/jobs/:id/status", (req, res) => {
     status: job.status,
     queuePosition,
   });
+});
+
+// Cancel job
+app.post("/api/jobs/:id/cancel", requireClassKey, (req, res) => {
+  const jobId = req.params.id;
+  const job = jobs.get(jobId);
+  const child = jobProcesses.get(jobId);
+
+  if (child) {
+    try {
+      child.kill("SIGKILL");
+    } catch {}
+    jobProcesses.delete(jobId);
+  }
+
+  // Remove from queue if not running yet
+  const queuedIndex = renderQueue.findIndex((q) => q.id === jobId);
+  if (queuedIndex >= 0) {
+    renderQueue.splice(queuedIndex, 1);
+  }
+
+  if (job) {
+    job.status = "canceled";
+    job.updatedAt = Date.now();
+    writeJobStatus(jobId, job).catch(() => {});
+  }
+
+  return res.json({ ok: true, status: "canceled" });
 });
 
 // Download outputs

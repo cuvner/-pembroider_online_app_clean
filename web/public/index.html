@@ -177,6 +177,7 @@
     <img id="preview" alt="Preview will appear here" />
     <div class="row">
       <a id="download" href="#" style="display: none">Download PES</a>
+      <button id="cancel" type="button" style="display: none">Cancel</button>
     </div>
 
     <script>
@@ -203,6 +204,7 @@
       const previewEl = document.getElementById("preview");
       const downloadEl = document.getElementById("download");
       const classKeyEl = document.getElementById("classKey");
+      const cancelEl = document.getElementById("cancel");
 
       const spacingEl = document.getElementById("spacing");
       const sizeEl = document.getElementById("size");
@@ -403,6 +405,7 @@
           if (!r.ok) throw new Error(j.error || j.message || "Status error");
 
           if (j.status === "done") return j;
+          if (j.status === "canceled") throw new Error("Job canceled");
           if (j.status === "error") {
             const details = j.stderr || j.message || "Renderer error";
             throw new Error(details);
@@ -494,6 +497,18 @@
         previewEl.removeAttribute("src");
         downloadEl.style.display = "none";
 
+        let statusUrl = null;
+        cancelEl.style.display = "inline";
+        cancelEl.onclick = async () => {
+          if (!statusUrl) return;
+          try {
+            await fetch(statusUrl.replace("/status", "/cancel"), {
+              method: "POST",
+              headers: { "x-class-key": classKey },
+            });
+          } catch {}
+        };
+
         try {
           const r = await fetch("/api/jobs", {
             method: "POST",
@@ -511,16 +526,19 @@
           if (!r.ok)
             throw new Error(j.error || j.message || "Job creation failed");
 
+          statusUrl = j.statusUrl;
           const done = await waitForJobDone(j.statusUrl);
 
           previewEl.src = done.previewUrl + "?t=" + Date.now();
           downloadEl.href = done.pesUrl;
           downloadEl.textContent = "Download PES";
           downloadEl.style.display = "inline";
+          cancelEl.style.display = "none";
 
           statusEl.textContent = "Done.";
         } catch (err) {
           statusEl.textContent = "";
+          cancelEl.style.display = "none";
           alert(err.message || String(err));
         }
       });
