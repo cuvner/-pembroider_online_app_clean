@@ -310,7 +310,10 @@ async function waitForJobDone(statusUrl, { intervalMs = 800, timeoutMs = 300000 
     if (!r.ok) throw new Error(j.error || j.message || "Status error");
 
     if (j.status === "done") return j;
-    if (j.status === "error") throw new Error(j.message || "Renderer error");
+    if (j.status === "error") {
+      const details = j.stderr || j.message || "Renderer error";
+      throw new Error(details);
+    }
 
     const pos = j.queuePosition ? ` (queue #${j.queuePosition})` : "";
     statusEl.textContent = `${j.status}${pos}…`;

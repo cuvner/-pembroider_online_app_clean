@@ -75,6 +75,14 @@ const renderQueue = [];
 let runningCount = 0;
 const jobs = new Map();
 
+async function writeJobStatus(jobId, statusObj) {
+  const jobDir = path.join(JOBS_ROOT, jobId);
+  const statusPath = path.join(jobDir, "status.json");
+  try {
+    await fsp.writeFile(statusPath, JSON.stringify(statusObj), "utf-8");
+  } catch {}
+}
+
 function withRenderSlot(id, fn) {
   return new Promise((resolve, reject) => {
     renderQueue.push({ id, fn, resolve, reject });
@@ -280,6 +288,7 @@ app.post(
         stderr: "",
         error: null,
       });
+      await writeJobStatus(jobId, jobs.get(jobId));
 
       withRenderSlot(
         jobId,
@@ -294,6 +303,7 @@ app.post(
             if (job) {
               job.status = "running";
               job.updatedAt = Date.now();
+              await writeJobStatus(jobId, job);
             }
 
             const child = spawn(cmd, args, {
@@ -334,6 +344,7 @@ app.post(
                 job.error = err?.message || String(err);
                 job.stdout = stdout;
                 job.stderr = stderr;
+                await writeJobStatus(jobId, job);
               }
               resolve();
             });
@@ -350,6 +361,7 @@ app.post(
                   job.cmd = [cmd, ...args].join(" ");
                   job.stdout = stdout;
                   job.stderr = stderr;
+                  await writeJobStatus(jobId, job);
                 }
               } else {
                 if (job) {
@@ -357,6 +369,7 @@ app.post(
                   job.updatedAt = Date.now();
                   job.stdout = stdout;
                   job.stderr = stderr;
+                  await writeJobStatus(jobId, job);
                 }
               }
 
@@ -395,9 +408,36 @@ app.get("/api/jobs/:id/status", (req, res) => {
   const job = jobs.get(jobId);
   if (!job) {
     const jobDir = path.join(JOBS_ROOT, jobId);
+    const statusPath = path.join(jobDir, "status.json");
     const outDir = path.join(jobDir, "out");
     const pesPath = path.join(outDir, "design.pes");
     const previewPath = path.join(outDir, "preview.png");
+    if (fs.existsSync(statusPath)) {
+      try {
+        const raw = fs.readFileSync(statusPath, "utf-8");
+        const saved = JSON.parse(raw);
+        if (saved.status === "error") {
+          return res.json({
+            status: "error",
+            message: saved.error || "Renderer failed",
+            exitCode: saved.exitCode,
+            cmd: saved.cmd,
+            stderr: saved.stderr,
+            stdout: saved.stdout,
+            stale: true,
+          });
+        }
+        if (saved.status === "done") {
+          return res.json({
+            status: "done",
+            previewUrl: `/api/jobs/${jobId}/preview.png`,
+            pesUrl: `/api/jobs/${jobId}/design.pes`,
+            stale: true,
+          });
+        }
+        return res.json({ status: saved.status || "running", stale: true });
+      } catch {}
+    }
     if (fs.existsSync(pesPath) && fs.existsSync(previewPath)) {
       return res.json({
         status: "done",

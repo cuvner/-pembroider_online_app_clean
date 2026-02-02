@@ -81,7 +81,7 @@ ENV PROCESSING_WRAPPER_ARGS=-a
 
 # Reduce GPU/GL issues
 ENV LIBGL_ALWAYS_SOFTWARE=1
-ENV JAVA_TOOL_OPTIONS="-Djava.awt.headless=false -Djava2d.opengl=false -Duser.home=/app"
+ENV JAVA_TOOL_OPTIONS="-Djava.awt.headless=false -Djava2d.opengl=false -Duser.home=/app -Xms256m -Xmx1200m"
 
 WORKDIR /app
 
