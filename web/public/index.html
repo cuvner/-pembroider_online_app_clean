@@ -1,172 +1,252 @@
 <!doctype html>
 <html>
-<head>
-  <meta charset="utf-8" />
-  <title>PEmbroider (MVP)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    body { font-family: system-ui, sans-serif; padding: 16px; max-width: 980px; margin: 0 auto; }
-    h1 { margin: 0 0 12px; }
-    .row { margin: 12px 0; display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-    .layers { margin-top: 12px; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; }
-    .layer { display: grid; grid-template-columns: 1fr 120px 170px 140px 120px 160px 140px; gap: 10px; padding: 10px; border-top: 1px solid #eee; align-items: center; }
-    .layer:first-child { border-top: 0; }
-    .layer code { font-size: 12px; }
-    label { font-size: 14px; }
-    input[type="number"]{ width: 90px; }
-    input[type="range"]{ width: 140px; }
-    input[type="password"]{ width: 180px; }
-    button { padding: 10px 12px; }
-    #status { font-weight: 600; }
-    img { max-width: 100%; display: block; margin-top: 12px; border: 1px solid #ccc; border-radius: 6px; background: #f5f5f5; }
-    .small { font-size: 12px; color: #555; }
-    .actions { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
-  </style>
-</head>
-<body>
-  <h1>PEmbroider (MVP)</h1>
+  <head>
+    <meta charset="utf-8" />
+    <title>PEmbroider (MVP)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        padding: 16px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      h1 {
+        margin: 0 0 12px;
+      }
+      .row {
+        margin: 12px 0;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .layers {
+        margin-top: 12px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      .layer {
+        display: grid;
+        grid-template-columns: 1fr 120px 170px 140px 120px 160px 140px;
+        gap: 10px;
+        padding: 10px;
+        border-top: 1px solid #eee;
+        align-items: center;
+      }
+      .layer:first-child {
+        border-top: 0;
+      }
+      .layer code {
+        font-size: 12px;
+      }
+      label {
+        font-size: 14px;
+      }
+      input[type="number"] {
+        width: 90px;
+      }
+      input[type="range"] {
+        width: 140px;
+      }
+      input[type="password"] {
+        width: 180px;
+      }
+      button {
+        padding: -10px 12px;
+      }
+      #status {
+        font-weight: 600;
+      }
+      img {
+        max-width: 100%;
+        display: block;
+        margin-top: 12px;
+        border: 1px solid #ccc;
+        border-radius: 6px;
+        background: #f5f5f5;
+      }
+      .small {
+        font-size: 12px;
+        color: #555;
+      }
+      .actions {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>PEmbroider (MVP)</h1>
 
-  <div class="row">
-    <label>
-      Upload PNG layers:
-      <input id="files" type="file" accept=".png" multiple />
-    </label>
+    <div class="row">
+      <label>
+        Upload PNG layers:
+        <input id="files" type="file" accept=".png" multiple />
+      </label>
 
-    <label>
-      Class key:
-      <input id="classKey" type="password" placeholder="x-class-key" />
-    </label>
+      <label>
+        Class key:
+        <input id="classKey" type="password" placeholder="x-class-key" />
+      </label>
 
-    <div class="actions">
-      <button id="go" type="button">Generate</button>
-      <span id="status"></span>
+      <div class="actions">
+        <button id="go" type="button">Generate</button>
+        <span id="status"></span>
+      </div>
     </div>
-  </div>
 
-  <div class="row">
-    <label>Canvas size:
-      <select id="size">
-        <option value="800">800×800</option>
-        <option value="1000">1000×1000</option>
-        <option value="1200">1200×1200</option>
-      </select>
-    </label>
+    <div class="row">
+      <label
+        >Canvas size:
+        <select id="size">
+          <option value="800">800×800</option>
+          <option value="1000">1000×1000</option>
+          <option value="1200">1200×1200</option>
+        </select>
+      </label>
 
-    <label>Scale %:
-      <input id="scale" type="number" min="10" max="100" step="5" value="100">
-    </label>
+      <label
+        >Scale %:
+        <input
+          id="scale"
+          type="number"
+          min="10"
+          max="100"
+          step="5"
+          value="100"
+        />
+      </label>
 
-    <label>Default spacing:
-      <input id="spacing" type="number" min="1" max="20" step="1" value="4">
-    </label>
+      <label
+        >Default spacing:
+        <input id="spacing" type="number" min="1" max="20" step="1" value="4" />
+      </label>
 
-    <label>Threshold:
-      <input id="threshold" type="range" min="0" max="255" value="128">
-      <span id="thresholdVal" class="small">128</span>
-    </label>
+      <label
+        >Threshold:
+        <input id="threshold" type="range" min="0" max="255" value="128" />
+        <span id="thresholdVal" class="small">128</span>
+      </label>
 
-    <label class="small">
-      <input id="thresholdEnabled" type="checkbox" checked>
-      Auto mask (threshold PNGs)
-    </label>
-    <label class="small">
-      <input id="optimize" type="checkbox" checked>
-      Optimize stitch order (slower)
-    </label>
-    <label class="small">
-      Optimize level:
-      <select id="optimizeLevel">
-        <option value="fast">Fast</option>
-        <option value="balanced" selected>Balanced</option>
-        <option value="thorough">Thorough</option>
-      </select>
-    </label>
-    <label class="small">
-      <input id="autoDownscale" type="checkbox" checked>
-      Auto downscale (avoid OOM)
-    </label>
-    <label class="small">
-      Max pixels:
-      <input id="maxPixels" type="number" min="100000" step="100000" value="1000000">
-    </label>
-    <label class="small">
-      Max dimension:
-      <input id="maxDim" type="number" min="400" step="100" value="1200">
-    </label>
-  </div>
+      <label class="small">
+        <input id="thresholdEnabled" type="checkbox" checked />
+        Auto mask (threshold PNGs)
+      </label>
+      <label class="small">
+        <input id="optimize" type="checkbox" checked />
+        Optimize stitch order (slower)
+      </label>
+      <label class="small">
+        Optimize level:
+        <select id="optimizeLevel">
+          <option value="fast">Fast</option>
+          <option value="balanced" selected>Balanced</option>
+          <option value="thorough">Thorough</option>
+        </select>
+      </label>
+      <label class="small">
+        <input id="autoDownscale" type="checkbox" checked />
+        Auto downscale (avoid OOM)
+      </label>
+      <label class="small">
+        Max pixels:
+        <input
+          id="maxPixels"
+          type="number"
+          min="100000"
+          step="100000"
+          value="1000000"
+        />
+      </label>
+      <label class="small">
+        Max dimension:
+        <input id="maxDim" type="number" min="400" step="100" value="1200" />
+      </label>
+    </div>
 
-  <div class="small">
-    Tip: upload one PNG per colour region. Transparent background is fine.
-  </div>
+    <div class="small">
+      Tip: upload one PNG per colour region. Transparent background is fine.
+    </div>
 
-  <div id="layers" class="layers" style="display:none;"></div>
+    <div id="layers" class="layers" style="display: none"></div>
 
-  <img id="preview" alt="Preview will appear here" />
-  <div class="row">
-    <a id="download" href="#" style="display:none;">Download PES</a>
-  </div>
+    <img id="preview" alt="Preview will appear here" />
+    <div class="row">
+      <a id="download" href="#" style="display: none">Download PES</a>
+    </div>
 
-<script>
-const PATTERNS = ["CONCENTRIC","CROSS","PARALLEL","SATIN","SPIRAL","PERLIN"];
-const PATTERN_DEFAULTS = {
-  PARALLEL: { spacing: 4, angles: [0, 90], stitch: [10, 20, 0] },
-  CROSS: { spacing: 4, angles: [0, 90], stitch: [10, 20, 0] },
-  CONCENTRIC: { spacing: 3, angles: [0, 90], stitch: [8, 16, 0] },
-  SATIN: { spacing: 3, angles: [0, 90], stitch: [6, 12, 0] },
-  SPIRAL: { spacing: 4, angles: [0, 90], stitch: [8, 16, 0] },
-  PERLIN: { spacing: 5, angles: [0, 90], stitch: [10, 20, 1] },
-};
+    <script>
+      const PATTERNS = [
+        "CONCENTRIC",
+        "CROSS",
+        "PARALLEL",
+        "SATIN",
+        "SPIRAL",
+        "PERLIN",
+      ];
+      const PATTERN_DEFAULTS = {
+        PARALLEL: { spacing: 4, angles: [0, 90], stitch: [10, 20, 0] },
+        CROSS: { spacing: 4, angles: [0, 90], stitch: [10, 20, 0] },
+        CONCENTRIC: { spacing: 3, angles: [0, 90], stitch: [8, 16, 0] },
+        SATIN: { spacing: 3, angles: [0, 90], stitch: [6, 12, 0] },
+        SPIRAL: { spacing: 4, angles: [0, 90], stitch: [8, 16, 0] },
+        PERLIN: { spacing: 5, angles: [0, 90], stitch: [10, 20, 1] },
+      };
 
-const filesEl = document.getElementById("files");
-const layersEl = document.getElementById("layers");
-const statusEl = document.getElementById("status");
-const previewEl = document.getElementById("preview");
-const downloadEl = document.getElementById("download");
-const classKeyEl = document.getElementById("classKey");
+      const filesEl = document.getElementById("files");
+      const layersEl = document.getElementById("layers");
+      const statusEl = document.getElementById("status");
+      const previewEl = document.getElementById("preview");
+      const downloadEl = document.getElementById("download");
+      const classKeyEl = document.getElementById("classKey");
 
-const spacingEl = document.getElementById("spacing");
-const sizeEl = document.getElementById("size");
-const scaleEl = document.getElementById("scale");
-const thresholdEl = document.getElementById("threshold");
-const thresholdValEl = document.getElementById("thresholdVal");
-const thresholdEnabledEl = document.getElementById("thresholdEnabled");
-const optimizeEl = document.getElementById("optimize");
-const optimizeLevelEl = document.getElementById("optimizeLevel");
-const autoDownscaleEl = document.getElementById("autoDownscale");
-const maxPixelsEl = document.getElementById("maxPixels");
-const maxDimEl = document.getElementById("maxDim");
+      const spacingEl = document.getElementById("spacing");
+      const sizeEl = document.getElementById("size");
+      const scaleEl = document.getElementById("scale");
+      const thresholdEl = document.getElementById("threshold");
+      const thresholdValEl = document.getElementById("thresholdVal");
+      const thresholdEnabledEl = document.getElementById("thresholdEnabled");
+      const optimizeEl = document.getElementById("optimize");
+      const optimizeLevelEl = document.getElementById("optimizeLevel");
+      const autoDownscaleEl = document.getElementById("autoDownscale");
+      const maxPixelsEl = document.getElementById("maxPixels");
+      const maxDimEl = document.getElementById("maxDim");
 
-thresholdEl.addEventListener("input", () => {
-  thresholdValEl.textContent = thresholdEl.value;
-});
+      thresholdEl.addEventListener("input", () => {
+        thresholdValEl.textContent = thresholdEl.value;
+      });
 
-function hexToRgb(hex) {
-  return [
-    parseInt(hex.slice(1,3), 16),
-    parseInt(hex.slice(3,5), 16),
-    parseInt(hex.slice(5,7), 16),
-  ];
-}
+      function hexToRgb(hex) {
+        return [
+          parseInt(hex.slice(1, 3), 16),
+          parseInt(hex.slice(3, 5), 16),
+          parseInt(hex.slice(5, 7), 16),
+        ];
+      }
 
-function makePatternSelect(selected) {
-  const s = document.createElement("select");
-  for (const p of PATTERNS) {
-    const opt = document.createElement("option");
-    opt.value = p;
-    opt.textContent = p;
-    if (p === selected) opt.selected = true;
-    s.appendChild(opt);
-  }
-  return s;
-}
+      function makePatternSelect(selected) {
+        const s = document.createElement("select");
+        for (const p of PATTERNS) {
+          const opt = document.createElement("option");
+          opt.value = p;
+          opt.textContent = p;
+          if (p === selected) opt.selected = true;
+          s.appendChild(opt);
+        }
+        return s;
+      }
 
-function renderLayerRows(fileList) {
-  layersEl.innerHTML = "";
+      function renderLayerRows(fileList) {
+        layersEl.innerHTML = "";
 
-  const header = document.createElement("div");
-  header.className = "layer";
-  header.style.fontWeight = "700";
-  header.innerHTML = `
+        const header = document.createElement("div");
+        header.className = "layer";
+        header.style.fontWeight = "700";
+        header.innerHTML = `
     <div>Layer (PNG)</div>
     <div>Colour</div>
     <div>Pattern</div>
@@ -175,244 +255,275 @@ function renderLayerRows(fileList) {
     <div>Stitch (len/gap/jit)</div>
     <div></div>
   `;
-  layersEl.appendChild(header);
+        layersEl.appendChild(header);
 
-  Array.from(fileList).forEach((f, idx) => {
-    const row = document.createElement("div");
-    row.className = "layer";
-    row.dataset.filename = f.name;
+        Array.from(fileList).forEach((f, idx) => {
+          const row = document.createElement("div");
+          row.className = "layer";
+          row.dataset.filename = f.name;
 
-    const name = document.createElement("div");
-    name.innerHTML = `<code>${f.name}</code>`;
+          const name = document.createElement("div");
+          name.innerHTML = `<code>${f.name}</code>`;
 
-    const color = document.createElement("input");
-    color.type = "color";
-    color.value = (idx % 2 === 0) ? "#ff0000" : "#00009b";
+          const color = document.createElement("input");
+          color.type = "color";
+          color.value = idx % 2 === 0 ? "#ff0000" : "#00009b";
 
-    const defaultPattern = (idx % 2 === 0) ? "CONCENTRIC" : "CROSS";
-    const pattern = makePatternSelect(defaultPattern);
+          const defaultPattern = idx % 2 === 0 ? "CONCENTRIC" : "CROSS";
+          const pattern = makePatternSelect(defaultPattern);
 
-    const angles = document.createElement("div");
-    angles.style.display = "flex";
-    angles.style.gap = "6px";
-    const a1 = document.createElement("input");
-    a1.type = "number";
-    a1.step = "1";
-    const a2 = document.createElement("input");
-    a2.type = "number";
-    a2.step = "1";
-    angles.appendChild(a1);
-    angles.appendChild(a2);
+          const angles = document.createElement("div");
+          angles.style.display = "flex";
+          angles.style.gap = "6px";
+          const a1 = document.createElement("input");
+          a1.type = "number";
+          a1.step = "1";
+          const a2 = document.createElement("input");
+          a2.type = "number";
+          a2.step = "1";
+          angles.appendChild(a1);
+          angles.appendChild(a2);
 
-    const move = document.createElement("div");
-    move.style.display = "flex";
-    move.style.gap = "6px";
-    const up = document.createElement("button");
-    up.type = "button";
-    up.textContent = "↑";
-    const down = document.createElement("button");
-    down.type = "button";
-    down.textContent = "↓";
-    move.appendChild(up);
-    move.appendChild(down);
+          const move = document.createElement("div");
+          move.style.display = "flex";
+          move.style.gap = "6px";
+          // const up = document.createElement("button");
+          // up.type = "button";
+          // up.textContent = "↑";
+          // const down = document.createElement("button");
+          // down.type = "button";
+          // down.textContent = "↓";
+          // move.appendChild(up);
+          // move.appendChild(down);
 
-    const remove = document.createElement("button");
-    remove.type = "button";
-    remove.textContent = "Remove";
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.textContent = "Remove";
 
-    up.addEventListener("click", () => {
-      const prev = row.previousElementSibling;
-      if (prev && prev !== header) layersEl.insertBefore(row, prev);
-    });
-    down.addEventListener("click", () => {
-      const next = row.nextElementSibling;
-      if (next) layersEl.insertBefore(next, row);
-    });
-    remove.addEventListener("click", () => row.remove());
+          // up.addEventListener("click", () => {
+          //   const prev = row.previousElementSibling;
+          //   if (prev && prev !== header) layersEl.insertBefore(row, prev);
+          // });
+          // down.addEventListener("click", () => {
+          //   const next = row.nextElementSibling;
+          //   if (next) layersEl.insertBefore(next, row);
+          // });
+          remove.addEventListener("click", () => row.remove());
 
-    const defaults = PATTERN_DEFAULTS[defaultPattern];
-    a1.value = defaults.angles[0];
-    a2.value = defaults.angles[1];
+          const defaults = PATTERN_DEFAULTS[defaultPattern];
+          a1.value = defaults.angles[0];
+          a2.value = defaults.angles[1];
 
-    const spacing = document.createElement("input");
-    spacing.type = "number";
-    spacing.step = "0.5";
-    spacing.min = "0.5";
-    spacing.value = defaults.spacing;
+          const spacing = document.createElement("input");
+          spacing.type = "number";
+          spacing.step = "0.5";
+          spacing.min = "0.5";
+          spacing.value = defaults.spacing;
 
-    const stitchLen = document.createElement("input");
-    stitchLen.type = "number";
-    stitchLen.step = "1";
-    stitchLen.value = defaults.stitch[0];
-    const stitchGap = document.createElement("input");
-    stitchGap.type = "number";
-    stitchGap.step = "1";
-    stitchGap.value = defaults.stitch[1];
-    const stitchJit = document.createElement("input");
-    stitchJit.type = "number";
-    stitchJit.step = "0.5";
-    stitchJit.value = defaults.stitch[2];
+          const stitchLen = document.createElement("input");
+          stitchLen.type = "number";
+          stitchLen.step = "1";
+          stitchLen.value = defaults.stitch[0];
+          const stitchGap = document.createElement("input");
+          stitchGap.type = "number";
+          stitchGap.step = "1";
+          stitchGap.value = defaults.stitch[1];
+          const stitchJit = document.createElement("input");
+          stitchJit.type = "number";
+          stitchJit.step = "0.5";
+          stitchJit.value = defaults.stitch[2];
 
-    const stitchBox = document.createElement("div");
-    stitchBox.style.display = "flex";
-    stitchBox.style.gap = "6px";
-    stitchBox.appendChild(stitchLen);
-    stitchBox.appendChild(stitchGap);
-    stitchBox.appendChild(stitchJit);
+          const stitchBox = document.createElement("div");
+          stitchBox.style.display = "flex";
+          stitchBox.style.gap = "6px";
+          stitchBox.appendChild(stitchLen);
+          stitchBox.appendChild(stitchGap);
+          stitchBox.appendChild(stitchJit);
 
-    pattern.addEventListener("change", () => {
-      const d = PATTERN_DEFAULTS[pattern.value] || PATTERN_DEFAULTS.PARALLEL;
-      spacing.value = d.spacing;
-      a1.value = d.angles[0];
-      a2.value = d.angles[1];
-      stitchLen.value = d.stitch[0];
-      stitchGap.value = d.stitch[1];
-      stitchJit.value = d.stitch[2];
-    });
+          pattern.addEventListener("change", () => {
+            const d =
+              PATTERN_DEFAULTS[pattern.value] || PATTERN_DEFAULTS.PARALLEL;
+            spacing.value = d.spacing;
+            a1.value = d.angles[0];
+            a2.value = d.angles[1];
+            stitchLen.value = d.stitch[0];
+            stitchGap.value = d.stitch[1];
+            stitchJit.value = d.stitch[2];
+          });
 
-    row._controls = { color, pattern, a1, a2, spacing, stitchLen, stitchGap, stitchJit };
+          row._controls = {
+            color,
+            pattern,
+            a1,
+            a2,
+            spacing,
+            stitchLen,
+            stitchGap,
+            stitchJit,
+          };
 
-    row.appendChild(name);
-    row.appendChild(color);
-    row.appendChild(pattern);
-    row.appendChild(angles);
-    row.appendChild(move);
-    row.appendChild(stitchBox);
-    row.appendChild(remove);
+          row.appendChild(name);
+          row.appendChild(color);
+          row.appendChild(pattern);
+          row.appendChild(angles);
+          row.appendChild(move);
+          row.appendChild(stitchBox);
+          row.appendChild(remove);
 
-    layersEl.appendChild(row);
-  });
+          layersEl.appendChild(row);
+        });
 
-  layersEl.style.display = "block";
-}
+        layersEl.style.display = "block";
+      }
 
-filesEl.addEventListener("change", () => {
-  if (!filesEl.files.length) {
-    layersEl.style.display = "none";
-    layersEl.innerHTML = "";
-    return;
-  }
-  renderLayerRows(filesEl.files);
-});
+      filesEl.addEventListener("change", () => {
+        if (!filesEl.files.length) {
+          layersEl.style.display = "none";
+          layersEl.innerHTML = "";
+          return;
+        }
+        renderLayerRows(filesEl.files);
+      });
 
-async function waitForJobDone(statusUrl, { intervalMs = 800, timeoutMs = 300000 } = {}) {
-  const start = Date.now();
-  while (true) {
-    const r = await fetch(statusUrl, { cache: "no-store" });
-    const raw = await r.text();
-    let j;
-    try {
-      j = JSON.parse(raw);
-    } catch (e) {
-      throw new Error(raw || "Non-JSON status response");
-    }
+      async function waitForJobDone(
+        statusUrl,
+        { intervalMs = 800, timeoutMs = 300000 } = {},
+      ) {
+        const start = Date.now();
+        while (true) {
+          const r = await fetch(statusUrl, { cache: "no-store" });
+          const raw = await r.text();
+          let j;
+          try {
+            j = JSON.parse(raw);
+          } catch (e) {
+            throw new Error(raw || "Non-JSON status response");
+          }
 
-    if (!r.ok) throw new Error(j.error || j.message || "Status error");
+          if (!r.ok) throw new Error(j.error || j.message || "Status error");
 
-    if (j.status === "done") return j;
-    if (j.status === "error") {
-      const details = j.stderr || j.message || "Renderer error";
-      throw new Error(details);
-    }
+          if (j.status === "done") return j;
+          if (j.status === "error") {
+            const details = j.stderr || j.message || "Renderer error";
+            throw new Error(details);
+          }
 
-    const pos = j.queuePosition ? ` (queue #${j.queuePosition})` : "";
-    statusEl.textContent = `${j.status}${pos}…`;
+          const pos = j.queuePosition ? ` (queue #${j.queuePosition})` : "";
+          statusEl.textContent = `${j.status}${pos}…`;
 
-    if (Date.now() - start > timeoutMs) {
-      throw new Error("Timed out waiting for render to finish");
-    }
-    await new Promise(res => setTimeout(res, intervalMs));
-  }
-}
+          if (Date.now() - start > timeoutMs) {
+            throw new Error("Timed out waiting for render to finish");
+          }
+          await new Promise((res) => setTimeout(res, intervalMs));
+        }
+      }
 
-document.getElementById("go").addEventListener("click", async () => {
-  const files = filesEl.files;
-  if (!files.length) return alert("Choose PNG files first.");
+      document.getElementById("go").addEventListener("click", async () => {
+        const files = filesEl.files;
+        if (!files.length) return alert("Choose PNG files first.");
 
-  const classKey = classKeyEl.value.trim();
-  if (!classKey) return alert("Enter your class key first.");
+        const classKey = classKeyEl.value.trim();
+        if (!classKey) return alert("Enter your class key first.");
 
-  const rows = Array.from(layersEl.querySelectorAll(".layer"))
-    .filter(el => el._controls);
+        const rows = Array.from(layersEl.querySelectorAll(".layer")).filter(
+          (el) => el._controls,
+        );
 
-  if (!rows.length) return alert("No layers to generate.");
+        if (!rows.length) return alert("No layers to generate.");
 
-  const size = parseInt(sizeEl.value, 10);
-  const spacing = parseFloat(spacingEl.value);
+        const size = parseInt(sizeEl.value, 10);
+        const spacing = parseFloat(spacingEl.value);
 
-  const scalePct = parseFloat(scaleEl.value);
-  const designScale = Math.max(0.1, Math.min(1.0, (isFinite(scalePct) ? scalePct : 100) / 100));
+        const scalePct = parseFloat(scaleEl.value);
+        const designScale = Math.max(
+          0.1,
+          Math.min(1.0, (isFinite(scalePct) ? scalePct : 100) / 100),
+        );
 
-  const threshold = parseInt(thresholdEl.value, 10);
-  const thresholdEnabled = thresholdEnabledEl.checked;
-  const optimize = optimizeEl.checked;
-  const optimizeLevel = optimizeLevelEl.value;
-  const autoDownscale = autoDownscaleEl.checked;
-  const maxPixels = parseInt(maxPixelsEl.value, 10);
-  const maxDim = parseInt(maxDimEl.value, 10);
+        const threshold = parseInt(thresholdEl.value, 10);
+        const thresholdEnabled = thresholdEnabledEl.checked;
+        const optimize = optimizeEl.checked;
+        const optimizeLevel = optimizeLevelEl.value;
+        const autoDownscale = autoDownscaleEl.checked;
+        const maxPixels = parseInt(maxPixelsEl.value, 10);
+        const maxDim = parseInt(maxDimEl.value, 10);
 
-  const spec = {
-    width: size,
-    height: size,
-    designScale: designScale,
-    output: { format: "pes", filename: "design" },
-    optimize: optimize,
-    optimizeLevel: optimizeLevel,
-    autoDownscale: autoDownscale,
-    maxPixels: isFinite(maxPixels) ? maxPixels : 1000000,
-    maxDimension: isFinite(maxDim) ? maxDim : 1200,
-    layers: rows.map((row) => {
-      const { color, pattern, a1, a2, spacing, stitchLen, stitchGap, stitchJit } = row._controls;
-      return {
-        file: row.dataset.filename,
-        color: hexToRgb(color.value),
-        pattern: pattern.value,
-        spacing: parseFloat(spacing.value),
-        angles: [parseFloat(a1.value), parseFloat(a2.value)],
-        stitch: [parseFloat(stitchLen.value), parseFloat(stitchGap.value), parseFloat(stitchJit.value)],
-        thresholdEnabled,
-        threshold
-      };
-    })
-  };
+        const spec = {
+          width: size,
+          height: size,
+          designScale: designScale,
+          output: { format: "pes", filename: "design" },
+          optimize: optimize,
+          optimizeLevel: optimizeLevel,
+          autoDownscale: autoDownscale,
+          maxPixels: isFinite(maxPixels) ? maxPixels : 1000000,
+          maxDimension: isFinite(maxDim) ? maxDim : 1200,
+          layers: rows.map((row) => {
+            const {
+              color,
+              pattern,
+              a1,
+              a2,
+              spacing,
+              stitchLen,
+              stitchGap,
+              stitchJit,
+            } = row._controls;
+            return {
+              file: row.dataset.filename,
+              color: hexToRgb(color.value),
+              pattern: pattern.value,
+              spacing: parseFloat(spacing.value),
+              angles: [parseFloat(a1.value), parseFloat(a2.value)],
+              stitch: [
+                parseFloat(stitchLen.value),
+                parseFloat(stitchGap.value),
+                parseFloat(stitchJit.value),
+              ],
+              thresholdEnabled,
+              threshold,
+            };
+          }),
+        };
 
-  const form = new FormData();
-  for (const f of files) form.append("files", f);
-  form.append("spec", JSON.stringify(spec));
+        const form = new FormData();
+        for (const f of files) form.append("files", f);
+        form.append("spec", JSON.stringify(spec));
 
-  statusEl.textContent = "Rendering…";
-  previewEl.removeAttribute("src");
-  downloadEl.style.display = "none";
+        statusEl.textContent = "Rendering…";
+        previewEl.removeAttribute("src");
+        downloadEl.style.display = "none";
 
-  try {
-    const r = await fetch("/api/jobs", {
-      method: "POST",
-      body: form,
-      headers: { "x-class-key": classKey },
-    });
-    const raw = await r.text();
-    let j;
-    try {
-      j = JSON.parse(raw);
-    } catch (e) {
-      throw new Error(raw || "Non-JSON response from server");
-    }
+        try {
+          const r = await fetch("/api/jobs", {
+            method: "POST",
+            body: form,
+            headers: { "x-class-key": classKey },
+          });
+          const raw = await r.text();
+          let j;
+          try {
+            j = JSON.parse(raw);
+          } catch (e) {
+            throw new Error(raw || "Non-JSON response from server");
+          }
 
-    if (!r.ok) throw new Error(j.error || j.message || "Job creation failed");
+          if (!r.ok)
+            throw new Error(j.error || j.message || "Job creation failed");
 
-    const done = await waitForJobDone(j.statusUrl);
+          const done = await waitForJobDone(j.statusUrl);
 
-    previewEl.src = done.previewUrl + "?t=" + Date.now();
-    downloadEl.href = done.pesUrl;
-    downloadEl.textContent = "Download PES";
-    downloadEl.style.display = "inline";
+          previewEl.src = done.previewUrl + "?t=" + Date.now();
+          downloadEl.href = done.pesUrl;
+          downloadEl.textContent = "Download PES";
+          downloadEl.style.display = "inline";
 
-    statusEl.textContent = "Done.";
-  } catch (err) {
-    statusEl.textContent = "";
-    alert(err.message || String(err));
-  }
-});
-</script>
-</body>
+          statusEl.textContent = "Done.";
+        } catch (err) {
+          statusEl.textContent = "";
+          alert(err.message || String(err));
+        }
+      });
+    </script>
+  </body>
 </html>
