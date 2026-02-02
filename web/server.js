@@ -94,6 +94,11 @@ function withRenderSlot(id, fn) {
 function drainQueue() {
   while (runningCount < RENDER_CONCURRENCY && renderQueue.length > 0) {
     const job = renderQueue.shift();
+    const jobState = jobs.get(job.id);
+    if (jobState && jobState.status === "canceled") {
+      job.resolve();
+      continue;
+    }
     runningCount += 1;
     job
       .fn()
@@ -456,6 +461,10 @@ app.get("/api/jobs/:id/status", (req, res) => {
     return res.status(404).json({ error: "Unknown job" });
   }
 
+  if (job.status === "canceled") {
+    return res.json({ status: "canceled" });
+  }
+
   const queuedIndex = renderQueue.findIndex((q) => q.id === jobId);
   const queuePosition = queuedIndex >= 0 ? queuedIndex + 1 : null;
 
@@ -500,7 +509,8 @@ app.post("/api/jobs/:id/cancel", requireClassKey, (req, res) => {
   // Remove from queue if not running yet
   const queuedIndex = renderQueue.findIndex((q) => q.id === jobId);
   if (queuedIndex >= 0) {
-    renderQueue.splice(queuedIndex, 1);
+    const [item] = renderQueue.splice(queuedIndex, 1);
+    if (item) item.resolve();
   }
 
   if (job) {
