@@ -252,6 +252,21 @@ void renderLayer(PEmbroiderGraphics E, JSONObject L, float designScale) {
 
   // Spacing
   float spacing = L.hasKey("spacing") ? L.getFloat("spacing") : 4.0;
+  boolean autoSpacing = true;
+  if (spec.hasKey("autoSpacing")) {
+    autoSpacing = spec.getBoolean("autoSpacing");
+  }
+  if (autoSpacing && (hatchMode == PEmbroiderGraphics.PARALLEL || hatchMode == PEmbroiderGraphics.CROSS)) {
+    float pixels = img.width * (float)img.height;
+    float minSpacing = spacing;
+    if (pixels > 4000000) minSpacing = max(minSpacing, 10);
+    else if (pixels > 2000000) minSpacing = max(minSpacing, 8);
+    else if (pixels > 1000000) minSpacing = max(minSpacing, 6);
+    if (minSpacing > spacing) {
+      spacing = minSpacing;
+      println("Auto-spacing: " + spacing);
+    }
+  }
   E.HATCH_SPACING = spacing;
   E.hatchSpacing(spacing);
 

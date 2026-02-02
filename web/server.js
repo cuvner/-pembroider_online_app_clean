@@ -84,6 +84,14 @@ async function writeJobStatus(jobId, statusObj) {
   } catch {}
 }
 
+function reconcileRunningCount() {
+  const active = jobProcesses.size;
+  if (runningCount !== active) {
+    runningCount = active;
+  }
+  drainQueue();
+}
+
 function withRenderSlot(id, fn) {
   return new Promise((resolve, reject) => {
     renderQueue.push({ id, fn, resolve, reject });
@@ -519,6 +527,7 @@ app.post("/api/jobs/:id/cancel", requireClassKey, (req, res) => {
     writeJobStatus(jobId, job).catch(() => {});
   }
 
+  setTimeout(reconcileRunningCount, 500).unref();
   return res.json({ ok: true, status: "canceled" });
 });
 
